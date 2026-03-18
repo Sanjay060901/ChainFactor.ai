@@ -4,5 +4,19 @@
 aws_region                   = "us-east-1"
 project_name                 = "chainfactor-ai"
 environment                  = "staging"
-db_password                  = "CHANGE_ME"
+
+# Networking
+vpc_cidr             = "10.0.0.0/16"
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.10.0/24", "10.0.20.0/24"]
+
+# Database
+db_password = "CHANGE_ME"
+db_name     = "chainfactor"
+db_username = "chainfactor_admin"
+
+# Algorand
 algorand_app_wallet_mnemonic = "CHANGE_ME"
+
+# Compute (update after first ECR push)
+container_image = "public.ecr.aws/docker/library/python:3.11-slim"
