@@ -25,6 +25,7 @@ Built for the AlgoBharat Hack Series 3.0 hackathon (Future of Finance + Agentic 
 - **Database**: PostgreSQL 15 on AWS RDS (Free Tier), SQLAlchemy + Alembic
 - **Cache**: Redis on AWS ElastiCache
 - **Storage**: AWS S3
+- **AWS Region**: ap-south-1 (Mumbai) for all services; Bedrock in us-east-1 (cross-region calls)
 - **Hosting**: ECS Fargate + ALB (backend + WebSocket), S3 + CloudFront (frontend)
 - **IaC**: Terraform (enterprise-grade -- S3 remote state + DynamoDB locking, reusable modules, environment isolation, least-privilege IAM, consistent tagging)
 - **CI/CD**: GitHub Actions

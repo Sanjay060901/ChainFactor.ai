@@ -272,7 +272,10 @@ Bug fixes, demo rehearsal x3, video recording, pitch deck review, Bedrock quota 
 | Feature | Status |
 |---------|--------|
 | 1.1 Monorepo Scaffold | deployed |
-| Remaining 41 features | not started |
+| 1.2 Backend Skeleton (API stubs) | deployed |
+| 1.3 Frontend Skeleton (page stubs) | deployed |
+| 1.6 Terraform Modules (IaC) | deployed |
+| Remaining 38 features | not started |
 
 ---
 
@@ -366,3 +369,8 @@ Bug fixes, demo rehearsal x3, video recording, pitch deck review, Bedrock quota 
 - [2026-03-18] DevOps + deployment reassigned: Manoj owns AWS infra (1.6) and deployment (8.3) instead of Abhishek. Abhishek's role narrowed to backend testing (8.1) only.
 - [2026-03-18] IaC: Terraform added to tech stack (enterprise-grade -- remote state with S3+DynamoDB, reusable modules, environment isolation, least-privilege IAM, tagging strategy). Feature 1.6 now includes Terraform setup.
 - [2026-03-18] ALGORAND STACK VERIFICATION -- 3 parallel agents verified entire blockchain stack. AlgoKit 3.0 corrected to 2.x (no 3.0 exists). SDK versions pinned: algopy v3.5.0, puyapy v5.8.0, py-algorand-sdk v2.11.1, algosdk v3 (JS). Pera≠MyAlgo corrected. Testnet endpoints confirmed (Algonode). Static export risk flagged (unverified with use-wallet-react).
+- [2026-03-18] Feature 1.1 (Monorepo Scaffold) deployed -- full project structure with backend, frontend, contracts, infra directories
+- [2026-03-18] Feature 1.2 (Backend Skeleton) deployed -- 25 API stub endpoints across 5 modules, all Pydantic schemas, SSE stream simulation
+- [2026-03-18] Feature 1.3 (Frontend Skeleton) deployed -- 11 page stubs with hardcoded data, typed API client, wallet provider, navbar
+- [2026-03-18] Feature 1.6 (Terraform Modules) deployed -- 11 enterprise modules (networking, compute, database, cache, storage, cdn, ALB, auth, secrets, IAM, monitoring) + staging environment
+- [2026-03-18] Skeleton-first development methodology adopted -- wireframes.md serves as shared API contract between frontend (Sanjay) and backend (Manoj)

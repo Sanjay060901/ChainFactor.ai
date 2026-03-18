@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # AWS
-    AWS_REGION: str = "us-east-1"
+    # AWS (primary region for all services except Bedrock)
+    AWS_REGION: str = "ap-south-1"
 
     # Cognito
     COGNITO_USER_POOL_ID: str = ""

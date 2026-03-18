@@ -190,3 +190,19 @@
   - Pass 2: Backend replaces stubs with real logic (DB, agents, S3). Frontend swaps data source.
 - **Artifacts:** `tasks/wireframes.md` contains ASCII wireframes for all screens + full API contracts (request/response shapes).
 - **Rule:** Always define the API contract (request body, response shape, status codes) BEFORE implementing either side. Both frontend and backend build against the contract independently.
+
+### Region split: ap-south-1 (Mumbai) + us-east-1 (Bedrock only)
+- **Decision:** All AWS services (RDS, ElastiCache, S3, ECS, Cognito, CloudFront, Secrets Manager) run in ap-south-1 (Mumbai) for lowest latency to Indian users. Bedrock stays in us-east-1 because Bedrock model availability varies by region.
+- **Impact:** Bedrock calls are cross-region (ap-south-1 -> us-east-1), adding ~50-80ms latency per call. Acceptable for agent tools (not user-facing latency-sensitive).
+- **Config:** `AWS_REGION=ap-south-1` (all services), `BEDROCK_REGION=us-east-1` (AI models only). Terraform defaults to ap-south-1.
+- **Rule:** Never hardcode us-east-1 as the default region. Always use ap-south-1 except for Bedrock.
+
+### Docker best practices: multi-stage builds
+- **Backend:** 2-stage build (builder with gcc/libpq-dev -> runtime with only libpq5). Non-root user, healthcheck, .dockerignore.
+- **Frontend:** 3-stage (deps -> development for docker-compose -> production static export for S3). Non-root user, .dockerignore.
+- **Rule:** Always use multi-stage Docker builds. Never ship build tools (gcc, node devDeps) in runtime images. Always run as non-root user.
+
+### SQLAlchemy: "metadata" is a reserved attribute name
+- **What happened:** Named an NFT model column `metadata` -- SQLAlchemy raised `InvalidRequestError: Attribute name 'metadata' is reserved when using the Declarative API`.
+- **Fix:** Renamed to `arc69_metadata`.
+- **Rule:** Never use `metadata`, `registry`, or `__tablename__` as column names in SQLAlchemy models. These are reserved by DeclarativeBase.
