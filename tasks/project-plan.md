@@ -274,8 +274,10 @@ Bug fixes, demo rehearsal x3, video recording, pitch deck review, Bedrock quota 
 | 1.1 Monorepo Scaffold | deployed |
 | 1.2 Backend Skeleton (API stubs) | deployed |
 | 1.3 Frontend Skeleton (page stubs) | deployed |
+| 1.4 Database Schema + Migrations | deployed |
+| 1.5 Docker Compose (local dev) | deployed |
 | 1.6 Terraform Modules (IaC) | deployed |
-| Remaining 38 features | not started |
+| Remaining 36 features | not started |
 
 ---
 

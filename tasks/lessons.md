@@ -202,6 +202,11 @@
 - **Frontend:** 3-stage (deps -> development for docker-compose -> production static export for S3). Non-root user, .dockerignore.
 - **Rule:** Always use multi-stage Docker builds. Never ship build tools (gcc, node devDeps) in runtime images. Always run as non-root user.
 
+### README.md must be created at project setup, not as an afterthought
+- **What happened:** Completed 6 features (scaffold, backend skeleton, frontend skeleton, database schema, Docker, Terraform) before realizing there was no README.md in the project at all.
+- **Impact:** Anyone cloning the repo (teammate Sanjay, hackathon judges) would see no documentation on what the project is, how to set it up, or what it does.
+- **Rule:** Create README.md immediately after the project scaffold (Feature 1.1 equivalent). It should be the FIRST documentation artifact. Include: project overview, problem/solution, tech stack, project structure, setup instructions, and team info. Update it as features are added.
+
 ### SQLAlchemy: "metadata" is a reserved attribute name
 - **What happened:** Named an NFT model column `metadata` -- SQLAlchemy raised `InvalidRequestError: Attribute name 'metadata' is reserved when using the Declarative API`.
 - **Fix:** Renamed to `arc69_metadata`.
