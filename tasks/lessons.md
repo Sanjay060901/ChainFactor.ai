@@ -138,3 +138,44 @@
   - Simple `@tool` decorator (fastest development velocity for hackathon)
   - Lightweight dependency footprint (boto3 + core SDK)
 - **Rule:** Framework selection criteria for Bedrock-first projects: (1) native Bedrock support, (2) tool-level callbacks for real-time streaming, (3) pipeline vs conversation model match, (4) development velocity for timeline constraints
+
+## Algorand Stack Verification Phase (2026-03-18)
+
+### AlgoKit version: 2.x (NOT 3.0)
+- **What happened:** All project docs referenced "AlgoKit 3.0" as if it existed
+- **Discovery:** The latest AlgoKit CLI version is 2.10.2. There is no AlgoKit 3.0.
+- **Fix:** Replaced all references with "AlgoKit 2.x" across project-plan.md, team-brief.md, CLAUDE.md
+- **Rule:** Always verify actual released versions of tools before committing to them in docs. Use `pip index versions` or `npm view` to check.
+
+### Algorand Python SDK versions confirmed
+- **Backend (py-algorand-sdk):** v2.11.1 on PyPI, import as `algosdk`. Testnet endpoint: `https://testnet-api.algonode.cloud` (free, no token needed).
+- **Frontend (algosdk JS):** v3.x, used by @txnlab/use-wallet-react v4.6.0. Breaking change from v2: transaction signing API changed.
+- **Smart contract (algorand-python):** v3.5.0, import as `algopy`. Compiler: `puyapy` v5.8.0. Extend `ARC4Contract`, use `@arc4.abimethod`.
+- **Rule:** Pin SDK versions in requirements.txt and package.json from Day 1. Algorand ecosystem moves fast.
+
+### Pera Wallet is NOT MyAlgo
+- **What happened:** Early CLAUDE.md draft said "Pera Wallet (formerly MyAlgo)"
+- **Discovery:** Pera and MyAlgo are completely different wallets by different teams. MyAlgo (by Rand Labs) is shut down. Pera (by Pera team) is the active primary wallet.
+- **Fix:** Corrected in CLAUDE.md Known Gotchas
+- **Rule:** Never conflate Algorand wallets. Pera, Defly, MyAlgo, and Lute are all separate products.
+
+### ARC-69 metadata: superseded but still widely supported
+- **Discovery:** ARC-69 has been technically superseded by ARC-89 (Digital Media Standard), but ARC-69 remains the most widely supported standard by Algorand explorers and marketplaces. For a hackathon, ARC-69 is the safer choice.
+- **Rule:** Use ARC-69 for hackathon NFTs. Consider ARC-89 for production if broader metadata is needed.
+
+### Static export (next export) with use-wallet-react: UNVERIFIED
+- **What happened:** Architecture assumes Next.js static export (next export -> S3 + CloudFront)
+- **Discovery:** @txnlab/use-wallet-react uses React context providers that require client-side rendering. Static export should work since wallet interactions are client-side, but this has NOT been verified in a real build.
+- **Fallback:** If static export fails, switch to Amplify Hosting (SSR support, still free tier)
+- **Rule:** Test static export compatibility with wallet libraries on Day 1. Don't wait until deployment day.
+
+### ASA opt-in costs and MBR
+- **Discovery:** Each ASA opt-in costs the user 0.1 ALGO MBR (Minimum Balance Requirement). The application wallet also needs 0.1 ALGO base + 0.1 ALGO per ASA it creates. Fund the application wallet with 10+ ALGO from testnet faucet on Day 1.
+- **Rule:** Always pre-fund application wallets on testnet before testing NFT minting. Budget for user MBR in the UX (show "this will require 0.1 ALGO" before opt-in).
+
+### Testnet endpoints: use Algonode (free, no token)
+- **Discovery:** Algorand testnet endpoints via Algonode are free and require no API token:
+  - Algod: `https://testnet-api.algonode.cloud`
+  - Indexer: `https://testnet-idx.algonode.cloud`
+  - Previous endpoints (PureStake, AlgoExplorer API) are deprecated or shut down.
+- **Rule:** Always use Algonode endpoints for testnet. For mainnet, consider Nodely or run your own node.

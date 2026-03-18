@@ -110,15 +110,20 @@ An AI-powered invoice financing platform for Indian SMEs on Algorand blockchain.
 | Frontend E2E Tests: Playwright for critical path (login -> upload -> processing -> claim NFT -> Pera Explorer) | Days 14-15 |
 
 **Key things to know:**
-- Smart contract uses Algorand Python (NOT PyTeal -- it's deprecated)
-- AlgoKit 3.0 for development + deployment. Use `algokit init --template-name arc4_app` as starting point.
-- **ARC-69 metadata standard**: NFT metadata goes in the note field of the latest acfg transaction
+- Smart contract uses **Algorand Python** (`algorand-python` v3.5.0, import as `algopy`). NOT PyTeal -- it's deprecated.
+- Compiler: `puyapy` v5.8.0 (compiles algopy to TEAL)
+- Contract pattern: `class InvoiceNFT(ARC4Contract):` with `@arc4.abimethod` decorators
+- AlgoKit 2.x (v2.10.2) for development + deployment. Use `algokit init -t python` as starting point.
+- **ARC-69 metadata standard**: NFT metadata goes in the `note` field of the latest `acfg` transaction. Required field: `"standard": "arc69"`.
 - Contract has: `create_invoice_nft()` method with ARC-69 metadata (invoice summary, risk score, doc hash)
-- Contract needs inner transactions for ASA creation -- fund contract with ALGO for MBR (0.1 ALGO per ASA, get from faucet)
+- ASA creation uses inner transactions: `itxn.AssetConfig()` for create, `itxn.AssetTransfer()` for transfer
+- Contract needs funding for MBR: 0.1 ALGO base + 0.1 ALGO per ASA created (get from testnet faucet)
 - **ASA configuration**: manager + clawback = application address, freeze = zero (no freeze authority)
 - Target: Algorand TESTNET only (never mainnet)
+- Testnet endpoints: `https://testnet-api.algonode.cloud` (Algod), `https://testnet-idx.algonode.cloud` (Indexer) -- free, no token
 - Use `algokit localnet start` for local development
-- Block explorer: Pera Explorer (explorer.perawallet.app) -- AlgoExplorer is shut down
+- Block explorer: Pera Explorer (`https://testnet.explorer.perawallet.app/`) -- AlgoExplorer is shut down
+- **Fallback plan**: If ARC4 contract isn't ready by Day 12, switch to direct ASA creation via py-algorand-sdk (simpler, same NFT result)
 
 ---
 
@@ -133,7 +138,7 @@ An AI-powered invoice financing platform for Indian SMEs on Algorand blockchain.
 | AI Agents | Strands Agents SDK (Bedrock-native, official AWS) |
 | AI Models | Sonnet 4.6 (processing + underwriting) / Opus 4.6 (NL query only) / Haiku 4.5 (future) via Bedrock |
 | OCR | Amazon Textract (primary) + Claude vision (fallback) |
-| Blockchain | Algorand Python ARC4 + ARC-69 + AlgoKit 3.0 (Testnet) |
+| Blockchain | Algorand Python ARC4 + ARC-69 + AlgoKit 2.x (Testnet) |
 | Explorer | Pera Explorer (explorer.perawallet.app) |
 | Database | PostgreSQL (RDS) |
 | Cache | Redis (ElastiCache) |

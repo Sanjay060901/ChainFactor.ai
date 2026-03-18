@@ -18,7 +18,9 @@ Built for the AlgoBharat Hack Series 3.0 hackathon (Future of Finance + Agentic 
 - **Multi-Agent**: Strands Swarm (3-agent system with tool-based handoffs)
 - **AI Models**: Sonnet 4.6 (invoice processing, underwriting, risk), Haiku 4.5 (lightweight tools), Opus 4.6 (NL query only) via Bedrock
 - **OCR**: Amazon Textract (primary), Claude vision (fallback)
-- **Blockchain**: Algorand Python (ARC4) + AlgoKit 3.0, Algorand Testnet, ARC-69 metadata standard
+- **Blockchain**: Algorand Python (algopy v3.5.0, compiler puyapy v5.8.0) + AlgoKit 2.x, Algorand Testnet, ARC-69 metadata standard
+- **Algorand SDK (backend)**: py-algorand-sdk v2.11.1 (import as algosdk)
+- **Algorand SDK (frontend)**: algosdk v3 (via @txnlab/use-wallet-react v4.6.0)
 - **Block Explorer**: Pera Explorer (explorer.perawallet.app) -- NOT AlgoExplorer (shut down)
 - **Database**: PostgreSQL 15 on AWS RDS (Free Tier), SQLAlchemy + Alembic
 - **Cache**: Redis on AWS ElastiCache
@@ -164,3 +166,15 @@ docker-compose -f infra/docker-compose.yml up   # Full local stack
 - AutoGen REJECTED -- conversation-based model shares full message thread between agents (wastes tokens), indirect Bedrock via anthropic SDK, coarse tool callbacks, 3 packages needed. Two incompatible projects share the name "AutoGen" (microsoft/autogen vs ag2ai/ag2).
 - LangGraph REJECTED -- best streaming but overkill graph abstraction for 2-agent sequential pipeline, indirect Bedrock via langchain-aws, no Bedrock examples in repo, verbose node function tool definitions.
 - Framework decision is FINAL: Strands Agents SDK. Evaluated 4 alternatives (CrewAI, LangGraph, AutoGen, direct Bedrock API). No further framework evaluation needed.
+- AlgoKit version is 2.10.2 (NOT 3.0 -- there is no 3.0 release)
+- Algorand Python: install `algorand-python` (stubs), import as `algopy`, compile with `puyapy`. Extend `ARC4Contract` for ABI contracts.
+- py-algorand-sdk is v2.11.1 (Python backend). Frontend uses JS algosdk v3 via @txnlab/use-wallet-react v4.6.0. Different ecosystems, no conflict.
+- Pera Wallet is NOT "formerly MyAlgo" -- they are completely different wallets. MyAlgo (by Rand Labs) is shut down. Pera (by Pera) is active.
+- @txnlab/use-wallet-react needs `"use client"` directive in Next.js 14 App Router. WalletManager uses browser APIs.
+- @txnlab/use-wallet-react static export (`next export`) is UNVERIFIED -- test early on Day 1.
+- Testnet Algod: `https://testnet-api.algonode.cloud` (free, no token). Testnet Indexer: `https://testnet-idx.algonode.cloud`.
+- Pera Explorer testnet ASA URL: `https://testnet.explorer.perawallet.app/asset/{asset_id}/`
+- ARC-69 is superseded by ARC-89 but still widely supported. Fine for hackathon.
+- ASA opt-in = 0-amount asset transfer to self. User pays 0.1 ALGO MBR increase. Use `AssetOptInTxn` convenience class.
+- Contract MBR: 0.1 ALGO base + 0.1 ALGO per ASA created. Fund via `algokit dispenser fund`.
+- Fallback plan: if ARC4 contract isn't ready by Day 12, switch to direct ASA creation via algosdk (simpler, no contract needed).
