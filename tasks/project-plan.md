@@ -280,7 +280,9 @@ Bug fixes, demo rehearsal x3, video recording, pitch deck review, Bedrock quota 
 | 2.1 Cognito Auth Backend | deployed |
 | 2.4 Wallet Linking Backend | deployed |
 | 2.5 IDOR Protection | deployed |
-| Remaining 33 features | not started |
+| 3.1 Invoice Upload Backend | deployed |
+| 4.1 Agent Framework (Strands SDK) | deployed |
+| Remaining 31 features | not started |
 
 ---
 

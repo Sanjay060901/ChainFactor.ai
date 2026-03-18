@@ -52,7 +52,7 @@ async def test_upload_invoice(client: AsyncClient):
     assert "invoice_id" in data
     assert data["invoice_id"]  # non-empty
     assert "status" in data
-    assert data["status"] == "processing"
+    assert data["status"] == "uploaded"
     assert "ws_url" in data
 
 

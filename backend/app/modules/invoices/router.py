@@ -1,10 +1,20 @@
-"""Invoice API stub endpoints. Returns hardcoded responses matching wireframes.md contract."""
+"""Invoice API endpoints. Upload is real; other endpoints are stubs matching wireframes.md."""
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, UploadFile, File, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import StreamingResponse
 
+from app.config import settings
+from app.database import get_db
+from app.models.user import User
+from app.modules.auth.dependencies import get_current_user
+from app.modules.invoices.service import (
+    create_invoice_record,
+    upload_to_s3,
+    validate_upload,
+)
 from app.schemas.invoice import (
     BuyerIntel,
     CompanyInfo,
@@ -144,12 +154,46 @@ STUB_INVOICE_DETAIL = InvoiceDetailResponse(
 
 
 @router.post("/upload", response_model=InvoiceUploadResponse)
-async def upload_invoice(file: UploadFile = File(...)):
+async def upload_invoice(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a PDF invoice. Validates, stores in S3, creates DB record."""
+    # DEMO_MODE: return stub response (no S3, no DB write)
+    if settings.DEMO_MODE:
+        return InvoiceUploadResponse(
+            invoice_id="inv_stub_001",
+            status="uploaded",
+            ws_url="/ws/processing/inv_stub_001",
+            created_at=STUB_NOW,
+        )
+
+    # Validate file (PDF only, max 5MB)
+    file_bytes = await validate_upload(file)
+
+    # Build S3 key: invoices/{user_id}/{invoice_id}/{filename}
+    import uuid as _uuid
+
+    invoice_id = _uuid.uuid4()
+    s3_key = (
+        f"{settings.S3_INVOICE_PREFIX}{current_user.id}/{invoice_id}/{file.filename}"
+    )
+    await upload_to_s3(file_bytes, s3_key=s3_key)
+
+    # Create DB record
+    invoice = await create_invoice_record(
+        db=db,
+        user=current_user,
+        file_name=file.filename or "unknown.pdf",
+        s3_key=s3_key,
+    )
+
     return InvoiceUploadResponse(
-        invoice_id="inv_stub_001",
-        status="processing",
-        ws_url="/ws/processing/inv_stub_001",
-        created_at=STUB_NOW,
+        invoice_id=str(invoice.id),
+        status="uploaded",
+        ws_url=f"/ws/processing/{invoice.id}",
+        created_at=invoice.created_at,
     )
 
 
