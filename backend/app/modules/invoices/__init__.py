@@ -1,1 +1,1 @@
-"""Invoices module: upload, processing, list, detail."""
+"""Invoices module: upload, processing, list, detail, NFT claim, audit trail."""
