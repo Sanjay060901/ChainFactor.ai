@@ -356,3 +356,8 @@ Bug fixes, demo rehearsal x3, video recording, pitch deck review, Bedrock quota 
 - [2026-03-18] Strands SDK technical notes added (session persistence, handoff context, reserved names)
 - [2026-03-18] Demo preparation section added (demo mode, demo script, pitch deck, video plan)
 - [2026-03-18] Pre-build action items added (Bedrock quota, testnet funding, Cognito lockout)
+- [2026-03-18] FRAMEWORK DEEP EVALUATION -- AutoGen and LangGraph evaluated as alternatives to Strands
+- [2026-03-18] AutoGen REJECTED: conversation-based model (shared message thread wastes tokens), indirect Bedrock (via anthropic SDK), coarse tool callbacks, 3 separate packages, tiktoken for Claude token counting
+- [2026-03-18] LangGraph REJECTED: best streaming of all frameworks but indirect Bedrock (via langchain-aws), no Bedrock examples in repo, verbose tool definitions (node functions), graph abstraction overkill for 2-agent sequential pipeline
+- [2026-03-18] Strands Agents SDK CONFIRMED as FINAL choice after evaluating all 4 frameworks (Strands, CrewAI, LangGraph, AutoGen). No further framework evaluation needed.
+- [2026-03-18] Agent count CONFIRMED as FINAL: 2 pipeline agents (Invoice Processing + Underwriting) + 1 standalone (NL Query) = 3 total. Agent vs tool decision framework documented in lessons.md.

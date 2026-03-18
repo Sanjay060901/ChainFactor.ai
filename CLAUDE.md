@@ -161,3 +161,6 @@ docker-compose -f infra/docker-compose.yml up   # Full local stack
 - ARC4 contracts need inner transactions for ASA creation -- contract must be funded with ALGO for MBR (0.1 ALGO per ASA)
 - Cognito JWT: use Authorization header (not cookie) to avoid CSRF issues
 - 5-agent architecture was evaluated and REJECTED -- GST compliance is deterministic (tool not agent), QA is folded into Underwriting prompt. Same capability, lower cost, faster.
+- AutoGen REJECTED -- conversation-based model shares full message thread between agents (wastes tokens), indirect Bedrock via anthropic SDK, coarse tool callbacks, 3 packages needed. Two incompatible projects share the name "AutoGen" (microsoft/autogen vs ag2ai/ag2).
+- LangGraph REJECTED -- best streaming but overkill graph abstraction for 2-agent sequential pipeline, indirect Bedrock via langchain-aws, no Bedrock examples in repo, verbose node function tool definitions.
+- Framework decision is FINAL: Strands Agents SDK. Evaluated 4 alternatives (CrewAI, LangGraph, AutoGen, direct Bedrock API). No further framework evaluation needed.

@@ -81,3 +81,60 @@
 - **Discovery:** Opus costs ~5x Sonnet per token. Using Opus for every underwriting decision would cost $250+ for 500 test invoices alone, blowing the $200 budget.
 - **Fix:** Sonnet for all pipeline agents, Opus only for low-volume NL query. Estimated cost: $109-144/month (down from $140-185).
 - **Rule:** Always calculate per-invocation Bedrock costs early. Multiply by expected test volume + demo volume + debug retries. Add 50% buffer.
+
+## Framework Deep Evaluation Phase (2026-03-18)
+
+### AutoGen evaluated and REJECTED for this project
+- **What happened:** Considered Microsoft AutoGen (v0.4+, currently v0.7.5) as alternative to Strands
+- **Discovery:**
+  - CRITICAL: There are TWO incompatible projects called "AutoGen" -- microsoft/autogen (v0.4+, MIT) and ag2ai/ag2 (forked from v0.2, Apache 2.0). They have different APIs, packages, and architectures. Must use microsoft/autogen for current features.
+  - AutoGen is conversation-based, not pipeline-based. ALL agents share the full message thread. Our Invoice Agent's raw OCR data, fraud check details, etc. would all be visible to the Underwriting Agent, wasting tokens and potentially confusing the model.
+  - Bedrock integration is indirect (via anthropic SDK's AsyncAnthropicBedrock, not native boto3).
+  - Tool callbacks are coarse-grained (ToolCallRequestEvent/ToolCallExecutionEvent) -- no in-progress events during tool execution. For WebSocket streaming, we'd need custom wrappers.
+  - Requires 3 separate packages: autogen-agentchat + autogen-core + autogen-ext.
+  - Uses tiktoken (OpenAI's tokenizer) for token counting on Claude models -- inaccurate.
+  - AG2 fork (v0.2 lineage) has NO streaming support with Bedrock at all -- explicitly disabled in source code.
+- **Rule:** AutoGen is designed for multi-agent conversations (debate, collaboration). For sequential pipelines with structured handoffs, use a pipeline-oriented framework. Conversation-based models waste tokens when agents don't need to see each other's full history.
+
+### LangGraph evaluated and REJECTED for this project
+- **What happened:** Considered LangGraph (by LangChain) as alternative to Strands
+- **Discovery:**
+  - LangGraph has the BEST streaming of all frameworks -- 4 modes (values, updates, custom, messages) including `get_stream_writer()` for pushing custom events from inside tools. This is genuinely excellent.
+  - LangGraph has built-in PostgreSQL checkpointing (AsyncPostgresSaver) -- durable execution, resume from failure. Also excellent.
+  - BUT: Bedrock integration is indirect via langchain-aws package. No Bedrock-specific examples in the LangGraph repo (all examples use OpenAI). Less community-tested for Bedrock.
+  - Tools require node functions (verbose) instead of simple `@tool` decorators.
+  - Graph abstraction (StateGraph, nodes, edges, state TypedDict with reducers, compile step) adds boilerplate for what is fundamentally a 2-agent sequential pipeline.
+  - Requires langchain-core + 4 sub-packages as dependencies.
+  - LangGraph Platform (managed hosting) is paid -- but the open-source core (MIT) is all we need.
+- **LangGraph's sweet spot:** Complex branching workflows, human-in-the-loop approval gates, parallel agent execution, long-running durable workflows. Not a 2-agent sequential pipeline.
+- **Rule:** Match framework complexity to pipeline complexity. For sequential agent pipelines with structured handoffs, a lightweight SDK (Strands) beats a graph engine (LangGraph). Save LangGraph for when you actually need graph-level orchestration.
+
+### The "agent vs tool" decision framework
+- **Discovery:** Through evaluating 5-agent, 3-agent, and various framework options, a clear pattern emerged for when something should be an agent vs a tool.
+- **Agent criteria (ALL must apply):**
+  1. Requires LLM reasoning (not deterministic rules)
+  2. Has dynamic decision-making (multiple valid paths)
+  3. Benefits from natural language interpretation of ambiguous inputs
+  4. Orchestrates multiple tools based on context
+- **Tool criteria (ANY applies):**
+  1. Deterministic logic (lookup table, math, format check)
+  2. Single API call with fixed response handling
+  3. Same input always produces same output
+  4. Can be written as a Python function in <100 lines
+- **Examples from our project:**
+  - GST compliance (HSN/SAC lookup, rate validation) = TOOL (deterministic rules)
+  - QA cross-validation (consistency checks) = TOOL on Underwriting Agent
+  - Risk calculation = TOOL but agent interprets the result (hybrid)
+  - Underwriting decision = AGENT (weighs multiple signals, applies judgment)
+  - Invoice data extraction = TOOL (Textract) but agent interprets ambiguous fields
+- **Rule:** If you can write it as a deterministic Python function, it's a tool. If it requires judgment, it's an agent. When in doubt, start as a tool -- you can always promote it to an agent later.
+
+### 4-framework comparison completed
+- Evaluated: Strands Agents SDK, CrewAI, LangGraph, AutoGen
+- **Winner: Strands Agents SDK** for our specific requirements:
+  - Native Bedrock integration (zero abstraction layers) -- only framework built by AWS
+  - Per-tool WebSocket streaming via BeforeToolCallEvent/AfterToolCallEvent hooks
+  - Pipeline-oriented Swarm with isolated agent contexts + structured handoffs
+  - Simple `@tool` decorator (fastest development velocity for hackathon)
+  - Lightweight dependency footprint (boto3 + core SDK)
+- **Rule:** Framework selection criteria for Bedrock-first projects: (1) native Bedrock support, (2) tool-level callbacks for real-time streaming, (3) pipeline vs conversation model match, (4) development velocity for timeline constraints
