@@ -26,6 +26,7 @@ Built for the AlgoBharat Hack Series 3.0 hackathon (Future of Finance + Agentic 
 - **Cache**: Redis on AWS ElastiCache
 - **Storage**: AWS S3
 - **Hosting**: ECS Fargate + ALB (backend + WebSocket), S3 + CloudFront (frontend)
+- **IaC**: Terraform (enterprise-grade -- S3 remote state + DynamoDB locking, reusable modules, environment isolation, least-privilege IAM, consistent tagging)
 - **CI/CD**: GitHub Actions
 - **Testing**: pytest (backend), Jest + Playwright (frontend)
 
@@ -74,6 +75,7 @@ Flow: Invoice Agent -> handoff (Strands Swarm tool-based) -> Underwriting Agent 
 | `frontend/src/components/` | React components: wallet, invoice, dashboard, ui (planned) |
 | `frontend/src/hooks/` | Custom hooks: useWebSocket, useInvoiceProcessing, useAuth (planned) |
 | `infra/docker-compose.yml` | Local dev: PostgreSQL, Redis, FastAPI, Next.js (planned) |
+| `infra/terraform/` | Enterprise Terraform: modules, environments, remote state (planned) |
 | `tasks/project-plan.md` | Master project plan with epics, features, milestones |
 | `tasks/architecture-raw.md` | Full architecture document (58KB) |
 

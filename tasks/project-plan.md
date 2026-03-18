@@ -37,6 +37,7 @@ ChainFactor AI is an AI-powered invoice financing platform for Indian SMEs built
 - **Storage**: AWS S3
 - **Secrets**: AWS Secrets Manager
 - **Monitoring**: CloudWatch + OpenTelemetry (via Strands built-in)
+- **IaC**: Terraform (enterprise structure -- remote state with S3+DynamoDB locking, reusable modules, environment isolation, least-privilege IAM, tagging strategy)
 - **CI/CD**: GitHub Actions
 - **Containerization**: Docker + docker-compose (local dev)
 - **Testing**: pytest (backend), Jest + Playwright (frontend)
@@ -270,7 +271,8 @@ Bug fixes, demo rehearsal x3, video recording, pitch deck review, Bedrock quota 
 
 | Feature | Status |
 |---------|--------|
-| All 42 features | not started |
+| 1.1 Monorepo Scaffold | deployed |
+| Remaining 41 features | not started |
 
 ---
 
@@ -362,4 +364,5 @@ Bug fixes, demo rehearsal x3, video recording, pitch deck review, Bedrock quota 
 - [2026-03-18] Strands Agents SDK CONFIRMED as FINAL choice after evaluating all 4 frameworks (Strands, CrewAI, LangGraph, AutoGen). No further framework evaluation needed.
 - [2026-03-18] Agent count CONFIRMED as FINAL: 2 pipeline agents (Invoice Processing + Underwriting) + 1 standalone (NL Query) = 3 total. Agent vs tool decision framework documented in lessons.md.
 - [2026-03-18] DevOps + deployment reassigned: Manoj owns AWS infra (1.6) and deployment (8.3) instead of Abhishek. Abhishek's role narrowed to backend testing (8.1) only.
+- [2026-03-18] IaC: Terraform added to tech stack (enterprise-grade -- remote state with S3+DynamoDB, reusable modules, environment isolation, least-privilege IAM, tagging strategy). Feature 1.6 now includes Terraform setup.
 - [2026-03-18] ALGORAND STACK VERIFICATION -- 3 parallel agents verified entire blockchain stack. AlgoKit 3.0 corrected to 2.x (no 3.0 exists). SDK versions pinned: algopy v3.5.0, puyapy v5.8.0, py-algorand-sdk v2.11.1, algosdk v3 (JS). Pera≠MyAlgo corrected. Testnet endpoints confirmed (Algonode). Static export risk flagged (unverified with use-wallet-react).
