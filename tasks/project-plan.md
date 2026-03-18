@@ -277,7 +277,10 @@ Bug fixes, demo rehearsal x3, video recording, pitch deck review, Bedrock quota 
 | 1.4 Database Schema + Migrations | deployed |
 | 1.5 Docker Compose (local dev) | deployed |
 | 1.6 Terraform Modules (IaC) | deployed |
-| Remaining 36 features | not started |
+| 2.1 Cognito Auth Backend | deployed |
+| 2.4 Wallet Linking Backend | deployed |
+| 2.5 IDOR Protection | deployed |
+| Remaining 33 features | not started |
 
 ---
 

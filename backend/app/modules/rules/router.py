@@ -61,6 +61,11 @@ async def create_rule(body: RuleCreateRequest):
     )
 
 
+@router.put("/default-action", response_model=DefaultActionResponse)
+async def set_default_action(body: DefaultActionRequest):
+    return DefaultActionResponse(default_action=body.default_action)
+
+
 @router.put("/{rule_id}", response_model=RuleResponse)
 async def update_rule(rule_id: str, body: RuleUpdateRequest):
     existing = STUB_RULES[0]
@@ -76,8 +81,3 @@ async def update_rule(rule_id: str, body: RuleUpdateRequest):
 @router.delete("/{rule_id}", response_model=MessageResponse)
 async def delete_rule(rule_id: str):
     return MessageResponse(message=f"Rule {rule_id} deleted")
-
-
-@router.put("/default-action", response_model=DefaultActionResponse)
-async def set_default_action(body: DefaultActionRequest):
-    return DefaultActionResponse(default_action=body.default_action)
