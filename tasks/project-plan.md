@@ -132,7 +132,7 @@ Strands `Swarm.stream_async()` -> yields per-event updates (multi_agent_node_sta
 - 1.3 Frontend Skeleton (M, Sanjay, P0)
 - 1.4 Database Schema + Migrations (M, Manoj, P0)
 - 1.5 Docker Compose Local Dev (S, Manoj, P0)
-- 1.6 AWS Infrastructure Setup (M, Abhishek, P0)
+- 1.6 AWS Infrastructure Setup (M, Manoj, P0)
 
 ### Epic 2: Authentication and Wallet (5 features)
 - 2.1 Cognito Auth Backend (L, Manoj, P0)
@@ -185,7 +185,7 @@ Strands `Swarm.stream_async()` -> yields per-event updates (multi_agent_node_sta
 ### Epic 8: Polish, Testing and Deployment (6 features)
 - 8.1 Critical Path Backend Tests (L, Abhishek, P1)
 - 8.2 Critical Path E2E Tests - Playwright (L, Jeevidha, P1)
-- 8.3 AWS Deployment (L, Abhishek+Manoj, P1)
+- 8.3 AWS Deployment (L, Manoj, P1)
 - 8.4 Demo Mode - pre-computed results for 3 test invoices (M, Manoj, P1)
 - 8.5 Demo Script + 5-Slide Pitch Deck (M, Sanjay, P1)
 - 8.6 Demo Polish + Sample Data Seed Script (M, Sanjay, P1)
@@ -323,11 +323,11 @@ Bug fixes, demo rehearsal x3, video recording, pitch deck review, Bedrock quota 
 
 | # | Action | Owner | When |
 |---|--------|-------|------|
-| 1 | Request Bedrock Sonnet quota increase in target region | Abhishek | Day 1 |
+| 1 | Request Bedrock Sonnet quota increase in target region | Manoj | Day 1 |
 | 2 | Fund ARC4 contract account on Algorand testnet (faucet, 20+ ALGO for MBR) | Jeevidha | Day 9 |
 | 3 | Set up AlgoKit localnet + ARC4 template | Jeevidha | Day 1-2 |
-| 4 | Cognito User Pool with account lockout enabled | Abhishek | Day 1-2 |
-| 5 | S3 bucket + IAM roles + Secrets Manager setup | Abhishek | Day 1-3 |
+| 4 | Cognito User Pool with account lockout enabled | Manoj | Day 1-2 |
+| 5 | S3 bucket + IAM roles + Secrets Manager setup | Manoj | Day 1-3 |
 
 ---
 
@@ -361,3 +361,4 @@ Bug fixes, demo rehearsal x3, video recording, pitch deck review, Bedrock quota 
 - [2026-03-18] LangGraph REJECTED: best streaming of all frameworks but indirect Bedrock (via langchain-aws), no Bedrock examples in repo, verbose tool definitions (node functions), graph abstraction overkill for 2-agent sequential pipeline
 - [2026-03-18] Strands Agents SDK CONFIRMED as FINAL choice after evaluating all 4 frameworks (Strands, CrewAI, LangGraph, AutoGen). No further framework evaluation needed.
 - [2026-03-18] Agent count CONFIRMED as FINAL: 2 pipeline agents (Invoice Processing + Underwriting) + 1 standalone (NL Query) = 3 total. Agent vs tool decision framework documented in lessons.md.
+- [2026-03-18] DevOps + deployment reassigned: Manoj owns AWS infra (1.6) and deployment (8.3) instead of Abhishek. Abhishek's role narrowed to backend testing (8.1) only.

@@ -62,13 +62,13 @@ An AI-powered invoice financing platform for Indian SMEs on Algorand blockchain.
 ### Manoj RS (Backend + AI)
 **Stack:** FastAPI, Python 3.11+, Strands Agents SDK, Amazon Textract, Bedrock (Claude), AlgoKit
 
-**Your features (~24):**
+**Your features (~29):**
 
 | Milestone | What You Build | Days |
 |-----------|---------------|------|
-| M1 (Days 1-8) | Monorepo scaffold, FastAPI skeleton, DB schema (9 tables), Docker Compose, Cognito auth backend, wallet linking backend, invoice upload + S3, Strands agent framework, WebSocket server (via ALB), 4 agent tools (extract, validate, GST compliance, GSTN) | 1-8 |
+| M1 (Days 1-8) | Monorepo scaffold, FastAPI skeleton, DB schema (9 tables), Docker Compose, **AWS infra setup (Cognito, S3, Secrets Manager, Bedrock quota, IAM, ALB)**, Cognito auth backend, wallet linking backend, invoice upload + S3, Strands agent framework, WebSocket server (via ALB), 4 agent tools (extract, validate, GST compliance, GSTN) | 1-8 |
 | M2 (Days 9-12) | 5-layer fraud detection tool, buyer intel tool, mock CIBIL + MCA tools, multi-signal risk scoring tool, Invoice Processing Agent assembly, Underwriting Agent + tools (incl. cross_validate_outputs), Swarm orchestration, mint_nft + ASA transfer tool, invoice list API, seller rules API | 9-12 |
-| M3 (Days 14-16) | Dashboard API, NL query agent (Opus), demo mode (pre-computed results), deployment support | 14-16 |
+| M3 (Days 14-16) | Dashboard API, NL query agent (Opus), demo mode (pre-computed results), **AWS deployment (ECS Fargate + ALB, RDS, ElastiCache, S3+CloudFront, GitHub Actions CI/CD)** | 14-16 |
 
 **Key things to know:**
 - Agents use Strands SDK with `@tool` decorator (NOT raw Bedrock API calls, NOT CrewAI)
@@ -85,23 +85,19 @@ An AI-powered invoice financing platform for Indian SMEs on Algorand blockchain.
 
 ---
 
-### Abhishek Reddy (Support - DevOps + Backend Testing)
-**Your features (3 + ongoing support):**
+### Abhishek Reddy (Support - Backend Testing)
+**Your features (1 + ongoing support):**
 
 | What | Days |
 |------|------|
-| AWS Infrastructure Setup: Cognito User Pool (with lockout), S3 bucket, Secrets Manager, Bedrock model access + **quota increase for Sonnet**, IAM roles, ALB setup | Days 1-3 |
 | Critical Path Backend Tests: pytest suite for critical path tools + API endpoints | Days 14-15 |
-| AWS Deployment: Dockerize backend, ECS Fargate + ALB setup, RDS, ElastiCache, S3+CloudFront, GitHub Actions CI/CD | Day 16 |
 
 **Key things to know:**
-- **Day 1 priority:** Request Bedrock Sonnet quota increase in target region (default RPM may throttle)
-- ALB for both API and WebSocket (NOT API Gateway -- avoids 29s timeout)
-- AWS services: Cognito, S3, Secrets Manager, Bedrock, Textract, ECS Fargate, ALB, RDS, ElastiCache, CloudFront, CloudWatch
-- Backend runs in Docker container on ECS Fargate (0.5 vCPU, 1GB RAM, 2 tasks) behind ALB
-- Frontend is static files on S3 behind CloudFront
-- All secrets go in AWS Secrets Manager (never in code or env files)
-- Cognito: enable account lockout (5 failed attempts -> temporary lockout)
+- Focus on testing the critical demo path: upload -> extraction -> validation -> fraud -> risk -> underwriting -> NFT mint
+- Mock Bedrock responses in tests (do NOT call real Bedrock in CI -- slow and expensive)
+- Use `unittest.mock` to simulate agent tool outputs
+- Test both happy path (valid invoice -> approved -> NFT) and reject path (fake invoice -> rejected)
+- AWS infra and deployment is handled by Manoj
 
 ---
 
