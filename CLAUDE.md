@@ -55,13 +55,17 @@ Flow: Invoice Agent -> handoff (Strands Swarm tool-based) -> Underwriting Agent 
 - Modular monolith with strict module boundaries (auth, invoices, agents, blockchain, dashboard)
 - ARC-69 metadata standard for NFTs
 - Mock GSTN/CIBIL/MCA APIs (real APIs require government registration)
+- Skeleton-first (wireframe method) development: all pages + API stubs built first, real logic filled in second pass
+- Enterprise Terraform for IaC (S3 remote state, DynamoDB locking, reusable modules, environment isolation)
 
 ## Key Files
 
 | Path | Purpose |
 |------|---------|
-| `backend/app/main.py` | FastAPI app entry point, CORS, lifespan (planned) |
-| `backend/app/config.py` | Settings from Secrets Manager + env vars (planned) |
+| `backend/app/main.py` | FastAPI app entry point, CORS, health check, lifespan |
+| `backend/app/config.py` | pydantic-settings with all env vars |
+| `backend/app/database.py` | Async SQLAlchemy engine + session factory |
+| `backend/app/models/base.py` | Declarative base, UUID + timestamp mixins |
 | `backend/app/modules/auth/` | Auth module: Cognito integration, JWT middleware (planned) |
 | `backend/app/modules/invoices/` | Invoice module: upload, processing, list (planned) |
 | `backend/app/modules/agents/` | Agent module: Strands agents, tools, swarm (planned) |
@@ -76,6 +80,7 @@ Flow: Invoice Agent -> handoff (Strands Swarm tool-based) -> Underwriting Agent 
 | `frontend/src/hooks/` | Custom hooks: useWebSocket, useInvoiceProcessing, useAuth (planned) |
 | `infra/docker-compose.yml` | Local dev: PostgreSQL, Redis, FastAPI, Next.js (planned) |
 | `infra/terraform/` | Enterprise Terraform: modules, environments, remote state (planned) |
+| `tasks/wireframes.md` | ASCII wireframes for all screens + full API contracts |
 | `tasks/project-plan.md` | Master project plan with epics, features, milestones |
 | `tasks/architecture-raw.md` | Full architecture document (58KB) |
 
@@ -106,6 +111,12 @@ cd contracts && algokit deploy           # Deploy smart contract to testnet
 docker build -t chainfactor-backend ./backend   # Build backend image
 docker-compose -f infra/docker-compose.yml up   # Full local stack
 
+# Terraform
+cd infra/terraform/backends/bootstrap && terraform init && terraform apply  # One-time state setup
+cd infra/terraform/environments/staging && terraform init                    # Init staging
+cd infra/terraform/environments/staging && terraform plan -var-file=terraform.tfvars   # Plan
+cd infra/terraform/environments/staging && terraform apply -var-file=terraform.tfvars  # Apply
+
 # Deployment (via GitHub Actions, or manual)
 # verify after first feature is implemented
 ```
@@ -122,6 +133,8 @@ docker-compose -f infra/docker-compose.yml up   # Full local stack
 ## Project-Specific Rules
 
 - Check `tasks/lessons.md` at session start. Update it after any correction.
+- **Skeleton-first development**: Define API contracts in `tasks/wireframes.md` FIRST. Backend returns stub responses matching the contract. Frontend builds against stubs. Real logic fills in second pass. Both sides must match the contract.
+- **Terraform enterprise patterns**: Remote state (S3+DynamoDB), reusable modules, environment isolation, least-privilege IAM, consistent tagging. No console-click infra.
 - All agents use Strands Agents SDK with `@tool` decorator pattern -- never raw Bedrock API calls
 - Use `Swarm.stream_async()` for real-time events, wire to Redis pub/sub for WebSocket
 - Strands hooks: BeforeToolCallEvent / AfterToolCallEvent for per-tool WebSocket streaming

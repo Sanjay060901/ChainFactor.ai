@@ -179,3 +179,14 @@
   - Indexer: `https://testnet-idx.algonode.cloud`
   - Previous endpoints (PureStake, AlgoExplorer API) are deprecated or shut down.
 - **Rule:** Always use Algonode endpoints for testnet. For mainnet, consider Nodely or run your own node.
+
+## Development Methodology (2026-03-18)
+
+### Skeleton-first (wireframe method) development adopted
+- **What it is:** Build all pages (frontend) and API endpoints (backend) as stubs/skeletons first with placeholder/hardcoded data. Then fill in real logic in a second pass.
+- **Why:** Frontend doesn't wait for backend. API contracts are agreed upfront. Demo mode is built-in from day 1. Integration is smooth because both sides code against the same contract.
+- **How we apply it:**
+  - Pass 1: Backend returns hardcoded stub responses matching the API contract. Frontend builds UI against stubs.
+  - Pass 2: Backend replaces stubs with real logic (DB, agents, S3). Frontend swaps data source.
+- **Artifacts:** `tasks/wireframes.md` contains ASCII wireframes for all screens + full API contracts (request/response shapes).
+- **Rule:** Always define the API contract (request body, response shape, status codes) BEFORE implementing either side. Both frontend and backend build against the contract independently.
