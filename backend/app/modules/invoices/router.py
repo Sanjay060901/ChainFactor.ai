@@ -99,27 +99,34 @@ STUB_INVOICE_DETAIL = InvoiceDetailResponse(
         flags=[],
         layers=[
             FraudLayer(
-                name="Document Integrity", result="pass", detail="No tampering detected"
+                name="Document Integrity",
+                result="pass",
+                detail="No tampering detected",
+                confidence=98.5,
             ),
             FraudLayer(
                 name="Financial Consistency",
                 result="pass",
                 detail="All amounts reconcile",
+                confidence=97.0,
             ),
             FraudLayer(
                 name="Pattern Analysis",
                 result="pass",
                 detail="Consistent with seller history",
+                confidence=95.0,
             ),
             FraudLayer(
                 name="Entity Verification",
                 result="pass",
                 detail="Both entities verified",
+                confidence=99.0,
             ),
             FraudLayer(
                 name="Cross-Reference",
                 result="pass",
                 detail="No duplicate invoices found",
+                confidence=96.0,
             ),
         ],
     ),
@@ -205,51 +212,137 @@ async def list_invoices(
     risk_level: str | None = None,
     sort: str = "-created_at",
     search: str | None = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    stub_invoices = [
+    if settings.DEMO_MODE:
+        stub_invoices = [
+            InvoiceListItem(
+                id="inv_stub_001",
+                invoice_number="INV-2026-001",
+                seller_name="Acme Technologies",
+                amount=613600,
+                risk_score=82,
+                status="approved",
+                created_at=STUB_NOW,
+            ),
+            InvoiceListItem(
+                id="inv_stub_002",
+                invoice_number="INV-2026-002",
+                seller_name="TechCo Solutions",
+                amount=310000,
+                risk_score=45,
+                status="flagged",
+                created_at=STUB_NOW,
+            ),
+            InvoiceListItem(
+                id="inv_stub_003",
+                invoice_number="INV-2026-003",
+                seller_name="BuildRight Infra",
+                amount=800000,
+                risk_score=91,
+                status="minted",
+                created_at=STUB_NOW,
+            ),
+            InvoiceListItem(
+                id="inv_stub_004",
+                invoice_number="INV-2026-004",
+                seller_name="FakeCorp Ltd",
+                amount=210000,
+                risk_score=12,
+                status="rejected",
+                created_at=STUB_NOW,
+            ),
+        ]
+        return InvoiceListResponse(
+            invoices=stub_invoices,
+            total=4,
+            page=page,
+            limit=limit,
+            pages=1,
+        )
+
+    # Real DB query path
+    import math
+
+    from sqlalchemy import func, select
+
+    from app.models.invoice import Invoice
+
+    # Base query: only current user's invoices (IDOR prevention)
+    query = select(Invoice).where(Invoice.user_id == current_user.id)
+    count_query = (
+        select(func.count())
+        .select_from(Invoice)
+        .where(Invoice.user_id == current_user.id)
+    )
+
+    # Filter by status
+    if status:
+        query = query.where(Invoice.status == status)
+        count_query = count_query.where(Invoice.status == status)
+
+    # Filter by risk_level: low>=70, medium 40-69, high<40
+    if risk_level:
+        if risk_level == "low":
+            query = query.where(Invoice.risk_score >= 70)
+            count_query = count_query.where(Invoice.risk_score >= 70)
+        elif risk_level == "medium":
+            query = query.where(Invoice.risk_score >= 40, Invoice.risk_score < 70)
+            count_query = count_query.where(
+                Invoice.risk_score >= 40, Invoice.risk_score < 70
+            )
+        elif risk_level == "high":
+            query = query.where(Invoice.risk_score < 40)
+            count_query = count_query.where(Invoice.risk_score < 40)
+
+    # Search by invoice_number (case-insensitive)
+    if search:
+        query = query.where(Invoice.invoice_number.ilike(f"%{search}%"))
+        count_query = count_query.where(Invoice.invoice_number.ilike(f"%{search}%"))
+
+    # Get total count
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+    pages = math.ceil(total / limit) if total > 0 else 0
+
+    # Sorting
+    descending = sort.startswith("-")
+    sort_field = sort.lstrip("-")
+    sort_column = getattr(Invoice, sort_field, Invoice.created_at)
+    if descending:
+        query = query.order_by(sort_column.desc())
+    else:
+        query = query.order_by(sort_column.asc())
+
+    # Pagination
+    offset = (page - 1) * limit
+    query = query.offset(offset).limit(limit)
+
+    result = await db.execute(query)
+    invoices = result.scalars().all()
+
+    items = [
         InvoiceListItem(
-            id="inv_stub_001",
-            invoice_number="INV-2026-001",
-            seller_name="Acme Technologies",
-            amount=613600,
-            risk_score=82,
-            status="approved",
-            created_at=STUB_NOW,
-        ),
-        InvoiceListItem(
-            id="inv_stub_002",
-            invoice_number="INV-2026-002",
-            seller_name="TechCo Solutions",
-            amount=310000,
-            risk_score=45,
-            status="flagged",
-            created_at=STUB_NOW,
-        ),
-        InvoiceListItem(
-            id="inv_stub_003",
-            invoice_number="INV-2026-003",
-            seller_name="BuildRight Infra",
-            amount=800000,
-            risk_score=91,
-            status="minted",
-            created_at=STUB_NOW,
-        ),
-        InvoiceListItem(
-            id="inv_stub_004",
-            invoice_number="INV-2026-004",
-            seller_name="FakeCorp Ltd",
-            amount=210000,
-            risk_score=12,
-            status="rejected",
-            created_at=STUB_NOW,
-        ),
+            id=str(inv.id),
+            invoice_number=inv.invoice_number,
+            seller_name=(inv.extracted_data or {})
+            .get("seller", {})
+            .get("name", "Unknown"),
+            amount=(inv.extracted_data or {}).get("total_amount", 0.0),
+            risk_score=inv.risk_score,
+            status=inv.status,
+            created_at=inv.created_at,
+        )
+        for inv in invoices
     ]
+
     return InvoiceListResponse(
-        invoices=stub_invoices,
-        total=4,
+        invoices=items,
+        total=total,
         page=page,
         limit=limit,
-        pages=1,
+        pages=pages,
     )
 
 

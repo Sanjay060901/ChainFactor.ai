@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # WebSocket
+    WS_HEARTBEAT_INTERVAL_SECONDS: int = (
+        30  # Ping interval to keep ALB connection alive
+    )
+
     # AWS (primary region for all services except Bedrock)
     AWS_REGION: str = "ap-south-1"
 

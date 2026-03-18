@@ -245,3 +245,13 @@
 ### Algorand addresses are exactly 58 characters
 - **What happened:** Test wallet address `"ALGO7TEST2ADDRESS3FOR4UNIT5TESTING6WALLET7X4F2"` was only 46 chars, failing the 58-char validation.
 - **Rule:** Always count test fixture strings that have length constraints. Algorand addresses = 58 chars. Use `"A" * 58` or a carefully counted string.
+
+### Always check WSL before claiming tools are unavailable on Windows
+- **What happened:** Told user "dmux requires tmux, and tmux doesn't run on Windows" -- user had already set up tmux 3.4 + dmux 5.6.1 + Claude Code CLI 2.1.76 in WSL the previous day.
+- **Root cause:** Checked only native Windows (`where`, `which`) without checking WSL (`wsl which`). Also failed to log the WSL setup to memory in the previous session.
+- **Rule:** Always run `wsl which <tool>` before declaring a Linux tool unavailable. Always log environment setup (WSL tools, PATH configs, installed CLIs) to MEMORY.md immediately when it happens.
+
+### Strands @tool decorator rejects leading-underscore parameters
+- **What happened:** All 3 mock tools (get_buyer_intel, get_company_info, get_credit_score) have a `_demo` parameter. Strands `@tool` builds a Pydantic model from the function signature, and Pydantic 2 rejects field names starting with `_`.
+- **Fix:** 3-layer pattern: (1) pure logic function with `_demo` param, (2) `@tool`-decorated function with clean signature, (3) public wrapper matching the test API.
+- **Rule:** Never use leading-underscore parameters in `@tool`-decorated functions. Use a wrapper pattern if tests or callers need underscore params.

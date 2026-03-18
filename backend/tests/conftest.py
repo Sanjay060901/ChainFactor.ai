@@ -37,7 +37,65 @@ if not hasattr(sqlite_base.SQLiteTypeCompiler, "visit_JSONB"):
     sqlite_base.SQLiteTypeCompiler.visit_JSONB = lambda self, type_, **kw: "JSON"
 
 if not hasattr(sqlite_base.SQLiteTypeCompiler, "visit_UUID"):
-    sqlite_base.SQLiteTypeCompiler.visit_UUID = lambda self, type_, **kw: "VARCHAR(36)"
+    sqlite_base.SQLiteTypeCompiler.visit_UUID = lambda self, type_, **kw: "TEXT"
+
+
+# --- Monkey-patch Uuid base type to serialize/deserialize as text on SQLite ---
+# The Uuid.result_processor creates a processor that calls uuid.UUID(value), but
+# SQLite stores UUID hex strings as floats due to numeric affinity. We override
+# the bind_processor to store UUIDs as dash-prefixed strings (non-numeric), and
+# the result_processor to handle both float and string values.
+from sqlalchemy.sql.sqltypes import Uuid as _SqlaUuid  # noqa: E402
+
+_original_uuid_bind_processor = _SqlaUuid.bind_processor
+_original_uuid_result_processor = _SqlaUuid.result_processor
+
+
+def _uuid_bind_processor(self, dialect):
+    """Return a bind processor that converts uuid.UUID to string for any dialect."""
+    if getattr(dialect, "supports_native_uuid", False):
+        return _original_uuid_bind_processor(self, dialect)
+
+    # Non-native UUID dialects (SQLite): always convert to string
+    if self.as_uuid:
+
+        def process(value):
+            if value is not None:
+                if isinstance(value, uuid.UUID):
+                    return str(value)
+                return value
+            return value
+
+        return process
+
+    return None
+
+
+def _uuid_result_processor(self, dialect, coltype):
+    """Return a result processor that handles float/string -> uuid.UUID for SQLite."""
+    if getattr(dialect, "supports_native_uuid", False):
+        return _original_uuid_result_processor(self, dialect, coltype)
+
+    # Non-native UUID dialects (SQLite)
+    if self.as_uuid:
+
+        def process(value):
+            if value is None:
+                return value
+            if isinstance(value, uuid.UUID):
+                return value
+            if isinstance(value, (int, float)):
+                # SQLite stored the hex as a numeric; convert back via int
+                return uuid.UUID(int=int(value))
+            return uuid.UUID(str(value))
+
+        return process
+
+    return None
+
+
+_SqlaUuid.bind_processor = _uuid_bind_processor
+_SqlaUuid.result_processor = _uuid_result_processor
 
 
 @pytest.fixture(scope="session")

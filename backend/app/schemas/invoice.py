@@ -47,6 +47,7 @@ class FraudLayer(BaseModel):
     name: str
     result: str
     detail: str
+    confidence: float
 
 
 class FraudDetectionResult(BaseModel):
