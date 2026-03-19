@@ -11,6 +11,13 @@ This agent handles steps 11-14 of the pipeline:
 
 from strands import Agent
 
+from app.agents.tools.approve_invoice import approve_invoice
+from app.agents.tools.cross_validate_outputs import _cross_validate_outputs_tool
+from app.agents.tools.flag_for_review import flag_for_review
+from app.agents.tools.get_invoice_data import _get_invoice_data_tool
+from app.agents.tools.get_seller_rules import _get_seller_rules_tool
+from app.agents.tools.log_decision import log_decision
+from app.agents.tools.reject_invoice import reject_invoice
 from app.modules.agents.config import SONNET_MODEL_ID, get_bedrock_model
 
 UNDERWRITING_AGENT_SYSTEM_PROMPT = """You are the Underwriting Agent for ChainFactor AI, an AI-powered invoice financing platform for Indian SMEs.
@@ -45,8 +52,15 @@ IMPORTANT RULES:
 - After approval, hand back to the Invoice Processing Agent for NFT minting
 - All decision logs must be persisted to the agent_traces table"""
 
-# Tools will be added as they are implemented in Feature 4.11
-UNDERWRITING_AGENT_TOOLS: list = []
+UNDERWRITING_AGENT_TOOLS: list = [
+    _cross_validate_outputs_tool,
+    _get_seller_rules_tool,
+    _get_invoice_data_tool,
+    approve_invoice,
+    reject_invoice,
+    flag_for_review,
+    log_decision,
+]
 
 
 def create_underwriting_agent() -> Agent:

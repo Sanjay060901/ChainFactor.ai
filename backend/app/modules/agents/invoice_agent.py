@@ -14,10 +14,22 @@ This agent handles steps 1-10 of the pipeline:
 8. get_company_info (mock MCA)
 9. calculate_risk
 10. generate_summary
+11. mint_nft (ARC-69 NFT on Algorand testnet)
 """
 
 from strands import Agent
 
+from app.agents.tools.calculate_risk import _calculate_risk_tool
+from app.agents.tools.check_fraud import check_fraud
+from app.agents.tools.extract_invoice import extract_invoice
+from app.agents.tools.generate_summary import _generate_summary_tool
+from app.agents.tools.get_buyer_intel import _get_buyer_intel_tool
+from app.agents.tools.get_company_info import get_company_info_tool
+from app.agents.tools.get_credit_score import _get_credit_score_tool
+from app.agents.tools.mint_nft import _mint_nft_tool
+from app.agents.tools.validate_fields import validate_fields
+from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+from app.agents.tools.verify_gstn import _verify_gstn_tool
 from app.modules.agents.config import SONNET_MODEL_ID, get_bedrock_model
 
 INVOICE_AGENT_SYSTEM_PROMPT = """You are the Invoice Processing Agent for ChainFactor AI, an AI-powered invoice financing platform for Indian SMEs on the Algorand blockchain.
@@ -45,8 +57,22 @@ IMPORTANT RULES:
 
 After completing all 10 steps, hand off to the Underwriting Agent with the complete analysis context."""
 
-# Tools will be added as they are implemented in Features 4.4-4.9
-INVOICE_AGENT_TOOLS: list = []
+# Pipeline tools in execution order (11 tools total).
+# For tools with a 3-layer wrapper pattern, we register the @tool-decorated
+# private function -- Strands needs the @tool decorator for registration.
+INVOICE_AGENT_TOOLS: list = [
+    extract_invoice,  # 1. OCR extraction (Textract + Claude fallback)
+    validate_fields,  # 2. Field validation (math, format, completeness)
+    validate_gst_compliance,  # 3. GST compliance (HSN, rates, e-invoice)
+    _verify_gstn_tool,  # 4. GSTIN verification (mock GST portal)
+    check_fraud,  # 5. 5-layer fraud detection
+    _get_buyer_intel_tool,  # 6. Buyer payment history
+    _get_credit_score_tool,  # 7. CIBIL credit score (mock)
+    get_company_info_tool,  # 8. MCA company info (mock)
+    _calculate_risk_tool,  # 9. Multi-signal risk scoring
+    _generate_summary_tool,  # 10. Summary for Underwriting Agent
+    _mint_nft_tool,  # 11. ARC-69 NFT minting on Algorand testnet
+]
 
 
 def create_invoice_processing_agent() -> Agent:
