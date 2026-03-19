@@ -267,3 +267,57 @@
 - **What happened:** Initial `dev-pipeline.md` only covered Phases 0-9 (per-feature cycle). Missing: project bootstrap, session continuity, milestone checkpoints, deployment, post-deployment monitoring, demo prep, context management.
 - **Fix:** Added 6 lifecycle sections wrapping around the per-feature phases (A-H stages).
 - **Rule:** A dev pipeline must cover birth-to-delivery, not just the coding loop. Include: project init, session management, milestone reviews, deployment, monitoring, and demo/delivery preparation.
+
+## Pipeline Runner TDD (2026-03-19)
+
+### Mock _execute_step, not just its dependencies
+- **What happened:** Tests for `run_invoice_pipeline` used fake `_execute_step` side-effects that overrode `generate_summary` and `calculate_risk` to produce reject-path signals, but the `underwriting_decision` step was not overridden. The pipeline reads `decision_result` from what `underwriting_decision` *returns*, not from what earlier steps return. So the status ended up "approved" even in rejection scenarios.
+- **Root cause:** `underwriting_decision` step is fully dispatched *inside* `_execute_step`. When `_execute_step` is mocked at the module level, the fake must return the correct decision dict for `"underwriting_decision"` explicitly -- signal-propagation from earlier steps only happens in the real `_execute_step`.
+- **Fix:** Added `if step_name == "underwriting_decision": return FAKE_REJECTED_DECISION` (and flagged variant) to each rejection/flagging fake.
+- **Rule:** When mocking a pipeline orchestrator's step dispatcher, every step that affects downstream routing must have an explicit return value in the mock side-effect. Don't assume signals from step N propagate to step N+2 through a mock.
+
+### Coverage caveat: mocking the dispatcher hides tool dispatch lines
+- **What happened:** Pipeline test coverage showed 46% because the `_execute_step` body (lines 125-310, all the tool dispatch if-branches) was never exercised -- the mock replaced the whole function.
+- **This is correct and intentional.** The orchestration logic (status transitions, context accumulation, skip logic, DB calls, event publishing) is fully covered. The tool dispatch branches require real tool integration tests that hit Bedrock/Textract/Algorand.
+- **Rule:** Coverage for a pipeline orchestrator should measure the orchestration paths (status, timing, routing, publishing) -- NOT the tool dispatch internals. Tool dispatch is covered by each tool's own test file. Don't pursue 80%+ on the pipeline file by calling real tools in unit tests.
+
+## M2 Backend Integration Session (2026-03-19)
+
+### M1 overdelivered — M2 was integration, not feature-building
+- **What happened:** todo.md listed 4.10 (Agent Assembly), 4.11 (Underwriting Agent), 6.1 (Smart Contract) as "not started" for M2. Exploration revealed ALL were already complete from M1.
+- **Impact:** Spent zero time re-building what existed. M2 became a pure integration sprint: pipeline runner, event bridge, persistence, NFT endpoints.
+- **Rule:** At milestone boundaries, always re-audit the codebase before planning. todo.md can lag behind actual implementation, especially when subagents build ahead of schedule.
+
+### Pre-existing bug: missing `import algosdk` in mint_nft.py _create_asa()
+- **What happened:** `_create_asa()` used `algosdk.mnemonic` and `algosdk.account` but only imported `from algosdk import transaction` and `from algosdk.v2client import algod`. Would crash in non-demo mode.
+- **Root cause:** All M1 tests used demo mode, so `_create_asa()` was never exercised.
+- **Fix:** Added `import algosdk` inside `_create_asa()`.
+- **Rule:** When a tool has a demo mode bypass, write at least one test that exercises the real-mode code path (with mocked external calls). Demo-only testing hides import errors and runtime bugs.
+
+### NFTOptInRequest schema change broke existing test fixtures
+- **What happened:** Removing `signed_txn` from `NFTOptInRequest` and changing `NFTOptInResponse` fields caused existing stub endpoint tests to fail (they asserted old field names).
+- **Fix:** Updated test fixtures alongside schema changes.
+- **Rule:** When changing Pydantic schemas, grep for all test files that construct those schemas and update them in the same commit. Schema changes are never isolated.
+
+### conftest.py: use `db.merge()` instead of `db.add()` for test fixtures
+- **What happened:** Test user fixtures used `db.add()`. When endpoint code called `db.commit()`, the test session's User object became detached, causing `DetachedInstanceError` on subsequent access.
+- **Fix:** Changed `db.add(user)` to `db.merge(user)` in conftest.py.
+- **Rule:** In async SQLAlchemy test fixtures, use `merge()` over `add()` when the fixture object may survive multiple commits across test boundaries.
+
+## Subagent Efficiency (2026-03-19)
+
+### Skip deep exploration when MEMORY.md is current
+- **What happened:** Launched 3 parallel exploration agents (292k tokens, 11 min) to audit the codebase before M2 planning. They re-discovered what MEMORY.md already documented: all tools complete, agents defined, contract done.
+- **Impact:** 11 minutes and 292k tokens wasted confirming known state.
+- **Rule:** At session start, READ MEMORY.md first. If it covers current implementation status, skip deep exploration. Use targeted reads (2-3 key files) instead of full codebase scans. Only launch exploration agents when MEMORY.md is stale or the question is genuinely new.
+
+### Isolate schema changes into a prep task before endpoint work
+- **What happened:** Task 6 (NFT Claim, expected ~5 min) took 20 minutes because changing `NFTClaimRequest`/`NFTClaimResponse` schemas broke 26 existing tests. The subagent spent 15 minutes fixing cascade breakage instead of writing its own 12 tests.
+- **Root cause:** Schema changes and endpoint implementation were bundled into one task. The schema change rippled through existing stubs, fixtures, and endpoint tests.
+- **Fix:** Always separate "update schemas + fix broken tests" into its own prep task. Then the endpoint task builds on stable ground.
+- **Rule:** When a task requires changing Pydantic schemas that existing code depends on, make schema migration a standalone task first: (1) change schemas, (2) grep all test files + stubs that use old fields, (3) update them, (4) verify suite passes, (5) THEN implement the new endpoint in a separate task.
+
+### Brainstorming skill adds overhead for integration work
+- **What happened:** Invoked the brainstorming skill for M2, which enforces a design discussion + spec + spec review loop. For integration work (wiring existing components), the architecture was already decided — the spec mostly restated what was in `architecture-raw.md` and `MEMORY.md`.
+- **Impact:** ~15 minutes on design ceremony for work that needed ~5 minutes of "here's the plan, go."
+- **Rule:** Use brainstorming for greenfield features or architectural decisions. For integration tasks where components exist and interfaces are defined, skip to writing-plans directly. The test is: "Am I deciding HOW to build, or just deciding the ORDER to wire things?" If the latter, skip brainstorming.

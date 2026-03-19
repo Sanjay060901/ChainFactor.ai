@@ -1,8 +1,9 @@
 """Invoice API endpoints. Upload is real; other endpoints are stubs matching wireframes.md."""
 
+import asyncio
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import StreamingResponse
 
@@ -14,6 +15,12 @@ from app.modules.invoices.service import (
     create_invoice_record,
     upload_to_s3,
     validate_upload,
+)
+from app.schemas.audit import (
+    AgentTrace,
+    AuditStep,
+    AuditTrailResponse,
+    Handoff,
 )
 from app.schemas.invoice import (
     BuyerIntel,
@@ -34,16 +41,11 @@ from app.schemas.invoice import (
     NFTInfo,
     NFTOptInRequest,
     NFTOptInResponse,
+    ProcessInvoiceResponse,
     RiskAssessment,
     SellerBuyer,
     UnderwritingResult,
     ValidationResult,
-)
-from app.schemas.audit import (
-    AgentTrace,
-    AuditStep,
-    AuditTrailResponse,
-    Handoff,
 )
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
@@ -160,6 +162,45 @@ STUB_INVOICE_DETAIL = InvoiceDetailResponse(
 )
 
 
+# ---------------------------------------------------------------------------
+# Helper: load invoice and verify ownership (IDOR prevention)
+# ---------------------------------------------------------------------------
+
+
+async def _get_invoice_for_user(db: AsyncSession, invoice_id: str, user_id):
+    """Load invoice from DB and verify it belongs to the requesting user.
+
+    Args:
+        db:         Async SQLAlchemy session.
+        invoice_id: Invoice UUID string from the URL path parameter.
+        user_id:    UUID of the authenticated user (from JWT).
+
+    Returns:
+        The Invoice ORM instance.
+
+    Raises:
+        HTTPException 404: If the invoice does not exist or belongs to a
+                           different user (IDOR prevention -- same response
+                           for both cases to avoid enumeration).
+    """
+    from sqlalchemy import select
+
+    from app.models.invoice import Invoice
+
+    result = await db.execute(
+        select(Invoice).where(Invoice.id == invoice_id, Invoice.user_id == user_id)
+    )
+    invoice = result.scalar_one_or_none()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return invoice
+
+
+# ---------------------------------------------------------------------------
+# Upload endpoint
+# ---------------------------------------------------------------------------
+
+
 @router.post("/upload", response_model=InvoiceUploadResponse)
 async def upload_invoice(
     file: UploadFile = File(...),
@@ -202,6 +243,11 @@ async def upload_invoice(
         ws_url=f"/ws/processing/{invoice.id}",
         created_at=invoice.created_at,
     )
+
+
+# ---------------------------------------------------------------------------
+# List invoices
+# ---------------------------------------------------------------------------
 
 
 @router.get("", response_model=InvoiceListResponse)
@@ -346,15 +392,75 @@ async def list_invoices(
     )
 
 
+# ---------------------------------------------------------------------------
+# Process endpoint -- must come BEFORE /{invoice_id} to avoid route shadowing
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{invoice_id}/process", response_model=ProcessInvoiceResponse, status_code=202
+)
+async def process_invoice(
+    invoice_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trigger AI pipeline processing for an uploaded invoice.
+
+    Returns 202 Accepted immediately and launches the 14-step pipeline as a
+    background task.  The client should connect to ws_url to receive real-time
+    progress events.
+
+    Raises:
+        HTTPException 404: Invoice not found or belongs to another user.
+        HTTPException 409: Invoice is not in 'uploaded' state (already
+                           processing, approved, rejected, etc.).
+    """
+    invoice = await _get_invoice_for_user(db, invoice_id, current_user.id)
+
+    if invoice.status != "uploaded":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Invoice cannot be processed (current status: {invoice.status})",
+        )
+
+    # Launch pipeline as a non-blocking background task.
+    # asyncio.create_task schedules the coroutine on the running event loop
+    # without awaiting it, so this endpoint returns immediately.
+    from app.modules.agents.pipeline import run_invoice_pipeline
+
+    asyncio.create_task(run_invoice_pipeline(invoice=invoice, db=db))
+
+    return ProcessInvoiceResponse(
+        invoice_id=str(invoice.id),
+        status="processing",
+        ws_url=f"/ws/processing/{invoice.id}",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Invoice detail (stub -- real DB query comes in a future task)
+# ---------------------------------------------------------------------------
+
+
 @router.get("/{invoice_id}", response_model=InvoiceDetailResponse)
-async def get_invoice(invoice_id: str):
+async def get_invoice(
+    invoice_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get invoice detail. Auth required (IDOR prevention added)."""
     return STUB_INVOICE_DETAIL
+
+
+# ---------------------------------------------------------------------------
+# SSE stream (stub)
+# ---------------------------------------------------------------------------
 
 
 @router.get("/{invoice_id}/stream")
 async def stream_invoice_processing(invoice_id: str):
     """SSE fallback for real-time processing events."""
-    import asyncio
     import json
 
     async def event_generator():
@@ -459,17 +565,118 @@ async def stream_invoice_processing(invoice_id: str):
 
 
 @router.post("/{invoice_id}/nft/opt-in", response_model=NFTOptInResponse)
-async def nft_opt_in(invoice_id: str, body: NFTOptInRequest):
-    return NFTOptInResponse(txn_id="stub_txn_optin_001", status="opted_in")
+async def nft_opt_in(
+    invoice_id: str,
+    body: NFTOptInRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return unsigned ASA opt-in transaction for the user to sign.
+
+    The client must sign the returned transaction and submit it to the
+    Algorand network before claiming the NFT.
+
+    Args:
+        invoice_id:   Invoice UUID from the URL path.
+        body:         Request body containing the user's wallet address.
+        current_user: Authenticated user (injected by Cognito JWT middleware).
+        db:           Async database session.
+
+    Returns:
+        NFTOptInResponse with base64 unsigned_txn, asset_id, and a message.
+
+    Raises:
+        HTTPException 404: Invoice not found or belongs to another user.
+        HTTPException 409: Invoice is not yet approved.
+        HTTPException 404: NFT not yet minted for this invoice.
+    """
+    invoice = await _get_invoice_for_user(db, invoice_id, current_user.id)
+
+    if invoice.status != "approved":
+        raise HTTPException(
+            status_code=409,
+            detail="Invoice must be approved before opt-in",
+        )
+
+    nft = invoice.nft_record
+    if not nft or not nft.asset_id:
+        raise HTTPException(
+            status_code=404,
+            detail="NFT not yet minted for this invoice",
+        )
+
+    from app.modules.invoices.nft_service import build_optin_txn
+
+    unsigned_txn = build_optin_txn(
+        wallet_address=body.wallet_address,
+        asset_id=nft.asset_id,
+    )
+
+    return NFTOptInResponse(
+        unsigned_txn=unsigned_txn,
+        asset_id=nft.asset_id,
+        message=(
+            f"Sign this transaction to opt-in to ASA {nft.asset_id}. "
+            "This requires 0.1 ALGO MBR."
+        ),
+    )
 
 
 @router.post("/{invoice_id}/nft/claim", response_model=NFTClaimResponse)
-async def nft_claim(invoice_id: str, body: NFTClaimRequest):
+async def nft_claim(
+    invoice_id: str,
+    body: NFTClaimRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Submit signed opt-in txn, then transfer NFT to user wallet.
+
+    Args:
+        invoice_id:   Invoice UUID from the URL path.
+        body:         Request body with wallet_address and signed_optin_txn.
+        current_user: Authenticated user (injected by Cognito JWT middleware).
+        db:           Async database session.
+
+    Returns:
+        NFTClaimResponse with asset_id, optin_txn_id, transfer_txn_id, status,
+        and explorer_url.
+
+    Raises:
+        HTTPException 404: Invoice not found or belongs to another user.
+        HTTPException 409: NFT not available (not yet minted or already claimed).
+    """
+    from app.modules.invoices.nft_service import submit_signed_txn, transfer_nft
+
+    invoice = await _get_invoice_for_user(db, invoice_id, current_user.id)
+
+    nft = invoice.nft_record
+    if not nft or nft.status != "minted":
+        raise HTTPException(status_code=409, detail="NFT not available for claim")
+
+    # 1. Submit user's signed opt-in transaction
+    optin_txid = await submit_signed_txn(body.signed_optin_txn)
+    nft.opt_in_txn_id = optin_txid
+    nft.status = "opt_in_pending"
+    await db.commit()
+
+    # 2. Transfer ASA from app wallet to user wallet
+    transfer_result = transfer_nft(
+        asset_id=nft.asset_id,
+        receiver_address=body.wallet_address,
+    )
+    nft.transfer_txn_id = transfer_result["txn_id"]
+    nft.claimed_by_wallet = body.wallet_address
+    nft.status = "claimed"
+    await db.commit()
+
+    explorer_url = f"{settings.PERA_EXPLORER_BASE_URL}/asset/{nft.asset_id}/"
+
     return NFTClaimResponse(
-        txn_id="stub_txn_claim_001",
-        asset_id=12345678,
+        asset_id=nft.asset_id,
+        optin_txn_id=optin_txid,
+        transfer_txn_id=transfer_result["txn_id"],
         status="claimed",
-        explorer_url="https://testnet.explorer.perawallet.app/asset/12345678/",
+        explorer_url=explorer_url,
     )
 
 

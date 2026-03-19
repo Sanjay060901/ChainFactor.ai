@@ -97,6 +97,7 @@ def _create_asa(
         Tuple of (asset_id, txn_id).
     """
     from algosdk import transaction
+    import algosdk
     from algosdk.v2client import algod
 
     logger.info("Creating ASA on testnet for invoice %s", invoice_id)

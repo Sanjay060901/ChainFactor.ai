@@ -145,21 +145,23 @@ class InvoiceListResponse(BaseModel):
 
 class NFTOptInRequest(BaseModel):
     wallet_address: str
-    signed_txn: str
 
 
 class NFTOptInResponse(BaseModel):
-    txn_id: str
-    status: str
+    unsigned_txn: str  # base64-encoded unsigned AssetTransferTxn
+    asset_id: int
+    message: str
 
 
 class NFTClaimRequest(BaseModel):
     wallet_address: str
+    signed_optin_txn: str  # base64-encoded signed opt-in txn from user's wallet
 
 
 class NFTClaimResponse(BaseModel):
-    txn_id: str
     asset_id: int
+    optin_txn_id: str
+    transfer_txn_id: str
     status: str
     explorer_url: str
 
@@ -183,3 +185,9 @@ class PipelineCompleteEvent(BaseModel):
     reason: str
     nft_asset_id: int | None = None
     invoice_id: str
+
+
+class ProcessInvoiceResponse(BaseModel):
+    invoice_id: str
+    status: str
+    ws_url: str

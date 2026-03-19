@@ -23,26 +23,30 @@
 ## Milestone 2 (Day 13) — Agents + Blockchain + Frontend
 **Status: IN PROGRESS**
 
-### Next Up (P0 - Can Run in Parallel)
+### Backend Integration (COMPLETE — 535/535 tests passing)
 
-- [ ] **4.10** Invoice Processing Agent Assembly — wire 11 tools into Strands Agent
-- [ ] **4.11** Underwriting Agent + 7 tools — cross_validate, approve/reject/flag, log_decision
-- [ ] **6.1** Smart Contract ARC4 + ARC-69 — scaffold exists, needs full impl
+- [x] **4.10** Invoice Processing Agent Assembly — 11 tools wired into direct pipeline (Phase 1)
+- [x] **4.11** Underwriting Agent + 7 tools — all tools complete, decision routing in pipeline
+- [x] **6.1** Smart Contract ARC4 + ARC-69 — 7 ABI methods, fully implemented
+- [x] **4.12** Pipeline Orchestration — 14-step pipeline runner with DB persistence + WebSocket events
+- [x] **6.2** NFT opt-in endpoint — builds unsigned ASA opt-in txn for wallet signing
+- [x] **6.5** NFT claim endpoint — submits opt-in + ASA transfer to user wallet
+- [x] Event Bridge — maps tool results to WebSocket step_complete events (51 tests)
+- [x] DB Persistence — saves tool results to invoice JSONB columns + agent traces (32 tests)
+- [x] Pipeline Runner — orchestrates 14 steps with error handling (42 tests)
+- [x] Process Endpoint — POST /invoices/{id}/process triggers pipeline (10 tests)
+- [x] Pre-existing bug fixed: mint_nft.py missing `import algosdk`
+- [x] IDOR fix: GET /invoices/{id} now requires auth
 
-### Then (P0 - Sequential, depends on above)
+### Remaining (Frontend + Strands Swarm)
 
-- [ ] **4.12** Swarm Orchestration — wire both agents into Strands Swarm
-- [ ] **6.2** mint_nft endpoint + ASA opt-in + transfer
-- [ ] **6.5** Claim NFT flow BE portion
-
-### Frontend (Manoj + Sanjay)
-
-- [ ] Frontend features as needed (Manoj now also doing FE work)
+- [ ] Frontend features (Manoj + Sanjay)
+- [ ] Strands Swarm integration (Phase 2 — swap direct calls for real Agent/Swarm execution)
 
 ### Milestone 2 Checkpoint (before moving to M3)
 
 - [ ] All M2 features complete
-- [ ] Full test suite passes
+- [x] Full test suite passes (535/535)
 - [ ] Security scan clean
 - [ ] Demo mode works with 3 test invoices
 - [ ] README.md updated

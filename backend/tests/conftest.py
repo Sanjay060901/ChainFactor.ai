@@ -128,7 +128,14 @@ async def db_session(test_engine):
 
 @pytest.fixture
 async def test_user(db_session: AsyncSession) -> User:
-    """Create a test user in the database."""
+    """Create or retrieve the test user in the database.
+
+    Uses merge() instead of add() so this fixture is idempotent across tests that
+    call await db.commit() (e.g. endpoint tests that update NFT status).  Those
+    commits permanently write the row to the session-scoped SQLite engine; a
+    subsequent add() would raise UNIQUE constraint errors when the next test
+    tries to create the same user.
+    """
     user = User(
         id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
         cognito_sub="test-cognito-sub-001",
@@ -139,9 +146,9 @@ async def test_user(db_session: AsyncSession) -> User:
         gstin="27AABCT1234R1ZM",
         wallet_address=None,
     )
-    db_session.add(user)
+    merged = await db_session.merge(user)
     await db_session.flush()
-    return user
+    return merged
 
 
 @pytest.fixture
