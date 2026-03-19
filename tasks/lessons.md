@@ -255,3 +255,15 @@
 - **What happened:** All 3 mock tools (get_buyer_intel, get_company_info, get_credit_score) have a `_demo` parameter. Strands `@tool` builds a Pydantic model from the function signature, and Pydantic 2 rejects field names starting with `_`.
 - **Fix:** 3-layer pattern: (1) pure logic function with `_demo` param, (2) `@tool`-decorated function with clean signature, (3) public wrapper matching the test API.
 - **Rule:** Never use leading-underscore parameters in `@tool`-decorated functions. Use a wrapper pattern if tests or callers need underscore params.
+
+## Configuration & Tooling (2026-03-19)
+
+### JSON + Shell + JS triple-quoting collision in settings.json hooks
+- **What happened:** Inline Node.js command in `settings.json` SessionStart hook used `require("fs")` — the double quotes inside the JSON string broke shell argument parsing. `require(\"fs\")` in JSON becomes `require("fs")` in shell, which prematurely closes the `node -e "..."` argument.
+- **Fix:** Use single quotes for all JavaScript strings inside JSON-embedded commands: `require('fs')` instead of `require("fs")`.
+- **Rule:** For inline Node.js/Python commands in settings.json hooks, use **single quotes for all inner strings**. JSON uses double quotes (layer 1), shell uses double quotes for `-e` argument (layer 2), inner code must use single quotes (layer 3). Never mix quoting layers.
+
+### Pipeline document must cover full project lifecycle, not just per-feature
+- **What happened:** Initial `dev-pipeline.md` only covered Phases 0-9 (per-feature cycle). Missing: project bootstrap, session continuity, milestone checkpoints, deployment, post-deployment monitoring, demo prep, context management.
+- **Fix:** Added 6 lifecycle sections wrapping around the per-feature phases (A-H stages).
+- **Rule:** A dev pipeline must cover birth-to-delivery, not just the coding loop. Include: project init, session management, milestone reviews, deployment, monitoring, and demo/delivery preparation.

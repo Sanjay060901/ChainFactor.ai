@@ -84,6 +84,9 @@ Flow: Invoice Agent -> handoff (Strands Swarm tool-based) -> Underwriting Agent 
 | `tasks/wireframes.md` | ASCII wireframes for all screens + full API contracts |
 | `tasks/project-plan.md` | Master project plan with epics, features, milestones |
 | `tasks/architecture-raw.md` | Full architecture document (58KB) |
+| `tasks/dev-pipeline.md` | Full project lifecycle pipeline: bootstrap, features, milestones, deployment, demo |
+| `tasks/todo.md` | Active work tracking at feature + milestone level |
+| `tasks/lessons.md` | Lessons learned, corrections, gotchas (28+ entries) |
 
 ## Commands
 
@@ -134,6 +137,24 @@ cd infra/terraform/environments/staging && terraform apply -var-file=terraform.t
 ## Project-Specific Rules
 
 - Check `tasks/lessons.md` at session start. Update it after any correction.
+- Follow `tasks/dev-pipeline.md` for the full project lifecycle: session continuity, per-feature development (research -> plan -> TDD -> review -> verify -> commit), milestone checkpoints, deployment, and demo prep.
+- Track active work in `tasks/todo.md` at both feature and milestone level. Mark items complete as you go.
+- At session start: `/resume-session` if available. At session end: update todo.md, `/learn`, `/save-session`.
+- At milestone boundaries: run full verification, multi-agent review, tag milestone, retrospective (see dev-pipeline.md Milestone Checkpoints).
+- Before deployment: enable `terraform` + `deploy-on-aws` plugins. Follow deployment workflow in dev-pipeline.md.
+- **Proactive automation (Claude MUST do these without being asked):**
+  - BEFORE entering plan mode: invoke `superpowers:brainstorming` automatically
+  - BEFORE writing any feature code: invoke TDD workflow (write test first, always)
+  - AFTER writing or modifying code: invoke `code-reviewer` + `python-reviewer` agents automatically
+  - AFTER writing auth/API/user-input code: invoke `security-reviewer` agent automatically
+  - AFTER completing a feature: update `tasks/todo.md` and `tasks/lessons.md` automatically
+  - AFTER any correction or mistake: update `tasks/lessons.md` immediately, do not wait
+  - WHEN build/tests fail: invoke `build-error-resolver` agent automatically
+  - WHEN context window is large: suggest `/checkpoint` or offload to subagents
+- **Manual only (NEVER do without user asking):**
+  - Git commit, push, PR creation (affects shared state)
+  - Deployment (affects production)
+  - Deleting files, branches, or data (destructive)
 - **Skeleton-first development**: Define API contracts in `tasks/wireframes.md` FIRST. Backend returns stub responses matching the contract. Frontend builds against stubs. Real logic fills in second pass. Both sides must match the contract.
 - **Terraform enterprise patterns**: Remote state (S3+DynamoDB), reusable modules, environment isolation, least-privilege IAM, consistent tagging. No console-click infra.
 - All agents use Strands Agents SDK with `@tool` decorator pattern -- never raw Bedrock API calls

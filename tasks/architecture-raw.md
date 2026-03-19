@@ -24,7 +24,7 @@ The system is organized into six major layers. Each component has a single, well
 |  +---------------------+    +---------------------+   +----------------+   |
 |  |  Next.js 14 App     |    |  @txnlab/use-wallet |   | use-wallet-ui  |   |
 |  |  (App Router)       |    |  -react             |   | (Pera/Defly)   |   |
-|  |  TailwindCSS        |    |  Wallet Context      |   | Connect Modal  |   |
+|  |  TailwindCSS        |    |  Wallet Context     |   | Connect Modal  |   |
 |  +----------+----------+    +----------+----------+   +-------+--------+   |
 |             |                          |                      |            |
 |             +-------+------------------+----------------------+            |
