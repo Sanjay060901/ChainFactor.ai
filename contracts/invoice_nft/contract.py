@@ -20,6 +20,7 @@ Key design:
 from algopy import (
     ARC4Contract,
     Global,
+    GlobalState,
     Txn,
     UInt64,
     arc4,
@@ -30,6 +31,10 @@ from algopy import (
 
 class InvoiceNFT(ARC4Contract):
     """ARC4 contract for creating and managing invoice NFT assets (ARC-69)."""
+
+    def __init__(self) -> None:
+        """Initialize contract state."""
+        self.nft_count = GlobalState(UInt64(0))
 
     @arc4.abimethod()
     def create_nft(
@@ -78,7 +83,91 @@ class InvoiceNFT(ARC4Contract):
             fee=Global.min_txn_fee,
         ).submit()
 
+        # Track total NFTs minted
+        self.nft_count.value += UInt64(1)
+
         return arc4.UInt64(created_asset.created_asset.id)
+
+    @arc4.abimethod()
+    def get_nft_count(self) -> arc4.UInt64:
+        """Return the total number of NFTs created by this contract.
+
+        Returns:
+            The cumulative count of NFTs minted.
+        """
+        return arc4.UInt64(self.nft_count.value)
+
+    @arc4.abimethod()
+    def verify_ownership(
+        self,
+        asset_id: arc4.UInt64,
+        owner: arc4.Address,
+    ) -> arc4.Bool:
+        """Check if a given address holds the specified ASA.
+
+        Uses op.AssetHolding to look up the asset balance for the owner.
+
+        Args:
+            asset_id: The ASA ID to check.
+            owner: The Algorand address to verify ownership for.
+
+        Returns:
+            True if the owner holds a balance > 0 of the asset, False otherwise.
+        """
+        balance, has_asset = op.AssetHolding.asset_balance(
+            owner.native, asset_id.native
+        )
+        if has_asset and balance > UInt64(0):
+            return arc4.Bool(True)  # noqa: FBT003
+        return arc4.Bool(False)  # noqa: FBT003
+
+    @arc4.abimethod()
+    def freeze_nft(
+        self,
+        asset_id: arc4.UInt64,
+        target: arc4.Address,
+    ) -> None:
+        """Freeze an NFT to prevent further transfers.
+
+        Args:
+            asset_id: The ASA ID to freeze.
+            target: The address whose holding of this asset should be frozen.
+
+        Only callable by the application creator.
+        """
+        assert Txn.sender == Global.creator_address, "Only app creator can freeze NFTs"
+
+        itxn.AssetFreeze(
+            freeze_asset=asset_id.native,
+            freeze_account=target.native,
+            frozen=True,
+            fee=Global.min_txn_fee,
+        ).submit()
+
+    @arc4.abimethod()
+    def unfreeze_nft(
+        self,
+        asset_id: arc4.UInt64,
+        target: arc4.Address,
+    ) -> None:
+        """Unfreeze a previously frozen NFT to allow transfers again.
+
+        Args:
+            asset_id: The ASA ID to unfreeze.
+            target: The address whose holding of this asset should be unfrozen.
+
+        Only callable by the application creator.
+        """
+        assert Txn.sender == Global.creator_address, (
+            "Only app creator can unfreeze NFTs"
+        )
+
+        itxn.AssetFreeze(
+            freeze_asset=asset_id.native,
+            freeze_account=target.native,
+            frozen=False,
+            fee=Global.min_txn_fee,
+        ).submit()
 
     @arc4.abimethod()
     def update_metadata(
