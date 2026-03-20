@@ -1,116 +1,103 @@
 "use client";
 
-/**
- * Real-time processing page skeleton (STAR SCREEN).
- * TODO: Wire to subscribeToProcessing() SSE client, animate step progression.
- * See wireframes.md Screen 4 for layout reference.
- */
-
 import { PROCESSING_STEPS } from "@/lib/constants";
+import { motion } from "framer-motion";
 
-export default function ProcessingPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  // Stub: show steps 1-5 as complete, step 6 in progress, rest pending
+export default function ProcessingPage({ params }: { params: { id: string } }) {
   const currentStep = 6;
+  const progress = Math.round((currentStep / 14) * 100);
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Processing Invoice {params.id}
-        </h1>
-        <span className="text-sm text-gray-500">⏱ 00:47</span>
-      </div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-between">
+        <h1 className="section-title">Processing Invoice</h1>
+        <div className="flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-4 py-1.5">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-blue-400" />
+          <span className="text-sm font-mono text-blue-300">00:47</span>
+        </div>
+      </motion.div>
 
       {/* Progress bar */}
-      <div className="mt-4">
-        <div className="flex items-center justify-between text-sm text-gray-500">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mt-4">
+        <div className="flex items-center justify-between text-sm text-slate-400">
           <span>Progress</span>
-          <span>{Math.round((currentStep / 14) * 100)}% ({currentStep}/14 steps)</span>
+          <span className="text-blue-400 font-medium">{progress}% ({currentStep}/14 steps)</span>
         </div>
-        <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-200">
-          <div
-            className="h-full rounded-full bg-primary-600 transition-all"
-            style={{ width: `${(currentStep / 14) * 100}%` }}
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400 shadow-lg shadow-blue-500/30"
           />
         </div>
-      </div>
+      </motion.div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Agent Pipeline */}
-        <div className="rounded-lg bg-white p-6 shadow-sm">
-          <h2 className="font-semibold text-gray-900">Agent Pipeline</h2>
-          <div className="mt-4 space-y-3">
-            {PROCESSING_STEPS.map((step) => {
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-6">
+          <h2 className="text-sm font-semibold text-slate-200">Agent Pipeline</h2>
+          <div className="mt-4 space-y-2">
+            {PROCESSING_STEPS.map((step, i) => {
               const isComplete = step.step < currentStep;
               const isActive = step.step === currentStep;
-              const isPending = step.step > currentStep;
               const isHandoff = step.step === 11;
 
               return (
                 <div key={step.step}>
                   {isHandoff && (
-                    <div className="my-2 border-t border-dashed border-gray-300 py-1 text-center text-xs text-gray-400">
-                      ── Agent Handoff ──
+                    <div className="my-3 flex items-center gap-2">
+                      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-blue-400">Agent Handoff</span>
+                      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
                     </div>
                   )}
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 text-sm">
-                      {isComplete ? "✅" : isActive ? "🔄" : "⏳"}
-                    </span>
-                    <div>
-                      <p
-                        className={`text-sm font-medium ${
-                          isComplete
-                            ? "text-gray-900"
-                            : isActive
-                              ? "text-primary-600"
-                              : "text-gray-400"
-                        }`}
-                      >
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + i * 0.03 }}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all ${
+                      isActive ? "bg-blue-500/10 border border-blue-500/30" :
+                      isComplete ? "bg-emerald-500/5" : "opacity-50"
+                    }`}
+                  >
+                    <span className="text-sm">{isComplete ? "✅" : isActive ? "🔄" : "⏳"}</span>
+                    <div className="flex-1">
+                      <p className={`text-xs font-medium ${
+                        isComplete ? "text-slate-300" : isActive ? "text-blue-400" : "text-slate-500"
+                      }`}>
                         {step.step}. {step.label}
                       </p>
-                      {isActive && (
-                        <p className="mt-0.5 text-xs text-primary-500">
-                          In progress...
-                        </p>
-                      )}
-                      {isComplete && (
-                        <p className="mt-0.5 text-xs text-gray-400">
-                          Complete
-                        </p>
-                      )}
+                      {isActive && <p className="text-[10px] text-blue-400/70 animate-pulse">In progress...</p>}
                     </div>
-                  </div>
+                    {isComplete && <span className="text-[10px] text-slate-600">Done</span>}
+                  </motion.div>
                 </div>
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
         {/* Live Details */}
-        <div className="rounded-lg bg-white p-6 shadow-sm">
-          <h2 className="font-semibold text-gray-900">Live Details</h2>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-card p-6">
+          <h2 className="text-sm font-semibold text-slate-200">Live Details</h2>
           <div className="mt-4">
-            <p className="text-sm text-gray-700">
-              Current: <span className="font-medium">Buyer Intelligence</span>
-            </p>
-            <p className="mt-2 text-sm text-gray-500">
-              Analyzing buyer payment history and previous invoice records for
-              GSTIN 29AABCT1234R1ZX...
-            </p>
-            <div className="mt-4 rounded-lg bg-gray-50 p-3">
-              <p className="text-xs text-gray-500">
-                Previous invoices found: 8
-              </p>
-              <p className="text-xs text-gray-500">Average payment: 28 days</p>
-              <p className="text-xs text-gray-500">Default rate: 0%</p>
+            <p className="text-sm text-slate-300">Current: <span className="text-blue-400 font-medium">Buyer Intelligence</span></p>
+            <p className="mt-2 text-sm text-slate-500">Analyzing buyer payment history and previous invoice records for GSTIN 29AABCT1234R1ZX...</p>
+            <div className="mt-4 space-y-2">
+              {[
+                { label: "Previous invoices found", value: "8" },
+                { label: "Average payment", value: "28 days" },
+                { label: "Default rate", value: "0%" },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between rounded-lg bg-slate-800/50 border border-blue-500/10 px-3 py-2">
+                  <span className="text-xs text-slate-400">{item.label}</span>
+                  <span className="text-xs font-medium text-blue-300">{item.value}</span>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

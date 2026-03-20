@@ -1,3 +1,274 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #020617;
+    --bg-secondary: #0f172a;
+    --bg-card: rgba(15, 23, 42, 0.8);
+    --border-glow: rgba(59, 130, 246, 0.3);
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --accent: #3b82f6;
+    --accent-glow: rgba(59, 130, 246, 0.5);
+  }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  ::selection {
+    background: rgba(59, 130, 246, 0.3);
+    color: #fff;
+  }
+}
+
+@layer components {
+  /* Glassmorphism card */
+  .glass-card {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: 1rem;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow:
+      0 0 30px rgba(59, 130, 246, 0.15),
+      0 20px 60px rgba(0, 0, 0, 0.3);
+    transform: translateY(-4px);
+  }
+
+  /* 3D tilt card */
+  .card-3d {
+    perspective: 1000px;
+    transform-style: preserve-3d;
+  }
+
+  .card-3d-inner {
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+  }
+
+  .card-3d:hover .card-3d-inner {
+    transform: rotateY(5deg) rotateX(5deg) translateZ(20px);
+  }
+
+  /* Neon glow button */
+  .btn-glow {
+    background: linear-gradient(135deg, #2563eb, #3b82f6, #60a5fa);
+    background-size: 200% 200%;
+    animation: gradient 3s ease infinite;
+    border: none;
+    border-radius: 0.75rem;
+    padding: 0.75rem 2rem;
+    color: white;
+    font-weight: 600;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .btn-glow::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, #2563eb, #60a5fa, #2563eb);
+    z-index: -1;
+    filter: blur(15px);
+    opacity: 0.5;
+    transition: opacity 0.3s;
+  }
+
+  .btn-glow:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.4);
+  }
+
+  .btn-glow:hover::before {
+    opacity: 0.8;
+  }
+
+  /* Outline glow button */
+  .btn-outline-glow {
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    border-radius: 0.75rem;
+    padding: 0.75rem 2rem;
+    color: #60a5fa;
+    font-weight: 600;
+    background: transparent;
+    transition: all 0.3s ease;
+  }
+
+  .btn-outline-glow:hover {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.8);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    transform: translateY(-2px);
+  }
+
+  /* Animated mesh background */
+  .mesh-bg {
+    background: 
+      radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(99, 102, 241, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, rgba(59, 130, 246, 0.04) 0%, transparent 50%),
+      linear-gradient(180deg, #020617 0%, #0f172a 50%, #020617 100%);
+  }
+
+  /* Grid pattern overlay */
+  .grid-pattern {
+    background-image: 
+      linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* Floating orbs */
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    background: linear-gradient(135deg, #60a5fa, #3b82f6, #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Stat number glow */
+  .stat-glow {
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+
+  /* Glass input */
+  .glass-input {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 0.75rem;
+    padding: 0.625rem 1rem;
+    color: #f1f5f9;
+    transition: all 0.3s ease;
+    outline: none;
+  }
+
+  .glass-input::placeholder {
+    color: #475569;
+  }
+
+  .glass-input:focus {
+    border-color: rgba(59, 130, 246, 0.6);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+  }
+
+  /* Glass table */
+  .glass-table {
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+
+  .glass-table thead {
+    background: rgba(59, 130, 246, 0.08);
+  }
+
+  .glass-table th {
+    color: #60a5fa;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 1rem 1.5rem;
+    text-align: left;
+  }
+
+  .glass-table td {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(59, 130, 246, 0.06);
+    font-size: 0.875rem;
+  }
+
+  .glass-table tbody tr {
+    transition: all 0.2s ease;
+  }
+
+  .glass-table tbody tr:hover {
+    background: rgba(59, 130, 246, 0.05);
+  }
+
+  /* Status badges */
+  .badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .badge-approved {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+
+  .badge-rejected {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .badge-flagged {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+  }
+
+  .badge-minted {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+  }
+
+  .badge-processing {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+
+  /* Section heading */
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    letter-spacing: -0.025em;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0f172a;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.3);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.5);
+  }
+}

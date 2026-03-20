@@ -5,25 +5,25 @@
  * Must be "use client" because wallet providers use browser APIs.
  */
 
-import {
-  WalletProvider,
-  useInitializeProviders,
-  PROVIDER_ID,
-} from "@txnlab/use-wallet-react";
-import { ReactNode } from "react";
+import { WalletProvider, WalletManager, NetworkId } from "@txnlab/use-wallet-react";
+import { ReactNode, useMemo } from "react";
 
 function WalletProviderWrapper({ children }: { children: ReactNode }) {
-  const providers = useInitializeProviders({
-    providers: [{ id: PROVIDER_ID.PERA }, { id: PROVIDER_ID.DEFLY }],
-    nodeConfig: {
-      network: "testnet",
-      nodeServer: "https://testnet-api.algonode.cloud",
-      nodePort: 443,
-      nodeToken: "",
-    },
-  });
+  const manager = useMemo(
+    () =>
+      new WalletManager({
+        wallets: ["pera", "defly"],
+        network: NetworkId.TESTNET,
+        algod: {
+          baseServer: "https://testnet-api.algonode.cloud",
+          port: 443,
+          token: "",
+        },
+      }),
+    []
+  );
 
-  return <WalletProvider value={providers}>{children}</WalletProvider>;
+  return <WalletProvider manager={manager}>{children}</WalletProvider>;
 }
 
 export function Providers({ children }: { children: ReactNode }) {

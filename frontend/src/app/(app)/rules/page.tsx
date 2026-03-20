@@ -1,127 +1,99 @@
 "use client";
 
-/**
- * Seller rules page skeleton.
- * TODO: Wire to api.listRules(), api.createRule(), etc.
- * See wireframes.md Screen 7 for layout reference.
- */
+import { motion } from "framer-motion";
+
+const rules = [
+  {
+    name: "Rule 1",
+    conditions: [
+      { connector: "IF", field: "invoice amount", op: "is less than", value: "₹5,00,000" },
+      { connector: "AND", field: "risk score", op: "is greater than", value: "60" },
+      { connector: "AND", field: "fraud flags", op: "equals", value: "0" },
+    ],
+    action: "Auto-approve",
+    active: true,
+  },
+  {
+    name: "Rule 2",
+    conditions: [
+      { connector: "IF", field: "amount", op: "<", value: "₹10,00,000" },
+      { connector: "AND", field: "risk", op: ">", value: "80" },
+      { connector: "AND", field: "CIBIL", op: ">", value: "700" },
+    ],
+    action: "Auto-approve",
+    active: true,
+  },
+];
 
 export default function RulesPage() {
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">Auto-Approve Rules</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        Set conditions for automatic invoice approval.
-      </p>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <h1 className="section-title">Auto-Approve Rules</h1>
+        <p className="mt-1 text-sm text-slate-400">Set conditions for automatic invoice approval.</p>
+      </motion.div>
 
-      {/* Rule 1 */}
       <div className="mt-6 space-y-4">
-        <div className="rounded-lg bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-gray-900">Rule 1</h3>
-            <button className="text-sm text-red-500 hover:underline">
-              Delete
-            </button>
-          </div>
-          <div className="mt-4 space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">IF</span>
-              <span>invoice amount</span>
-              <select className="rounded border px-2 py-1 text-sm">
-                <option>is less than</option>
-              </select>
-              <span>₹</span>
-              <input
-                type="text"
-                defaultValue="5,00,000"
-                className="w-28 rounded border px-2 py-1 text-sm"
-              />
+        {rules.map((rule, ri) => (
+          <motion.div
+            key={rule.name}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: ri * 0.1 }}
+            className="glass-card p-6"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 border border-blue-500/30 text-xs font-bold text-blue-400">{ri + 1}</div>
+                <h3 className="font-medium text-slate-200">{rule.name}</h3>
+              </div>
+              <button className="text-sm text-red-400/60 hover:text-red-400 transition-colors">Delete</button>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">AND</span>
-              <span>risk score</span>
-              <select className="rounded border px-2 py-1 text-sm">
-                <option>is greater than</option>
-              </select>
-              <input
-                type="text"
-                defaultValue="60"
-                className="w-20 rounded border px-2 py-1 text-sm"
-              />
+            <div className="mt-4 space-y-2">
+              {rule.conditions.map((c, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                  <span className="rounded bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-blue-400">{c.connector}</span>
+                  <span className="text-slate-300">{c.field}</span>
+                  <span className="text-slate-500">{c.op}</span>
+                  <span className="rounded bg-slate-800 border border-blue-500/10 px-2 py-0.5 text-blue-300 font-medium">{c.value}</span>
+                </div>
+              ))}
+              <div className="flex items-center gap-2 text-sm mt-1">
+                <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-400">THEN</span>
+                <span className="text-emerald-400 font-medium">{rule.action}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">AND</span>
-              <span>fraud flags</span>
-              <select className="rounded border px-2 py-1 text-sm">
-                <option>equals</option>
-              </select>
-              <input
-                type="text"
-                defaultValue="0"
-                className="w-20 rounded border px-2 py-1 text-sm"
-              />
+            <div className="mt-4 flex items-center justify-between">
+              <span className="badge badge-approved">✅ Active</span>
+              <button className="rounded-lg border border-blue-500/20 px-3 py-1 text-xs text-slate-400 hover:bg-blue-500/10 transition-colors">Toggle</button>
             </div>
-            <p className="text-gray-500">
-              THEN → <span className="font-medium text-green-600">Auto-approve</span>
-            </p>
-          </div>
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-sm text-green-600">✅ Active</span>
-            <button className="rounded border px-3 py-1 text-xs text-gray-500 hover:bg-gray-50">
-              Toggle
-            </button>
-          </div>
-        </div>
-
-        {/* Rule 2 */}
-        <div className="rounded-lg bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-gray-900">Rule 2</h3>
-            <button className="text-sm text-red-500 hover:underline">
-              Delete
-            </button>
-          </div>
-          <div className="mt-4 space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">IF</span>
-              <span>amount &lt; ₹10,00,000</span>
-              <span className="text-gray-500">AND</span>
-              <span>risk &gt; 80</span>
-              <span className="text-gray-500">AND</span>
-              <span>CIBIL &gt; 700</span>
-            </div>
-            <p className="text-gray-500">
-              THEN → <span className="font-medium text-green-600">Auto-approve</span>
-            </p>
-          </div>
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-sm text-green-600">✅ Active</span>
-            <button className="rounded border px-3 py-1 text-xs text-gray-500 hover:bg-gray-50">
-              Toggle
-            </button>
-          </div>
-        </div>
+          </motion.div>
+        ))}
       </div>
 
       {/* Add Rule */}
-      <button className="mt-4 rounded-lg border-2 border-dashed border-gray-300 px-6 py-3 text-sm font-medium text-gray-500 hover:border-primary-400 hover:text-primary-600">
+      <motion.button
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+        whileHover={{ scale: 1.02 }}
+        className="mt-4 w-full rounded-xl border-2 border-dashed border-blue-500/20 py-4 text-sm font-medium text-blue-400/60 hover:border-blue-500/40 hover:text-blue-400 transition-colors"
+      >
         + Add New Rule
-      </button>
+      </motion.button>
 
       {/* Default Behavior */}
-      <div className="mt-6">
-        <h3 className="text-sm font-medium text-gray-700">Default Behavior</h3>
-        <p className="mt-1 text-sm text-gray-500">When no rules match:</p>
-        <select className="mt-2 rounded-lg border border-gray-300 px-3 py-2 text-sm">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="mt-8 glass-card p-6">
+        <h3 className="text-sm font-medium text-slate-200">Default Behavior</h3>
+        <p className="mt-1 text-sm text-slate-500">When no rules match:</p>
+        <select className="glass-input mt-2 text-sm">
           <option>Flag for manual review</option>
           <option>Reject</option>
           <option>Always approve</option>
         </select>
-      </div>
+      </motion.div>
 
-      <button className="mt-6 rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-primary-700">
-        Save
-      </button>
+      <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="btn-glow mt-6 px-6 py-2.5 text-sm">
+        Save Rules
+      </motion.button>
     </div>
   );
 }
