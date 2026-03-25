@@ -87,6 +87,13 @@ def _create_asa(
 ) -> tuple[int, str]:
     """Create an ASA on Algorand testnet with ARC-69 metadata.
 
+    When ALGORAND_APP_ID > 0: calls the deployed InvoiceNFT ARC4 contract's
+    create_nft() method via AtomicTransactionComposer. The contract creates
+    the ASA as an inner transaction and returns the asset ID.
+
+    When ALGORAND_APP_ID == 0: falls back to direct AssetConfigTxn creation
+    (no contract needed -- same ARC-69 metadata in note field).
+
     This function makes real algosdk calls. It is patched in tests.
 
     Args:
@@ -96,8 +103,8 @@ def _create_asa(
     Returns:
         Tuple of (asset_id, txn_id).
     """
-    from algosdk import transaction
     import algosdk
+    from algosdk import transaction
     from algosdk.v2client import algod
 
     logger.info("Creating ASA on testnet for invoice %s", invoice_id)
@@ -112,12 +119,65 @@ def _create_asa(
     # Recover the application wallet from mnemonic
     private_key = algosdk.mnemonic.to_private_key(settings.ALGORAND_APP_WALLET_MNEMONIC)
     sender = algosdk.account.address_from_private_key(private_key)
-
-    # Get suggested params
     params = algod_client.suggested_params()
+    metadata_json_str = json.dumps(metadata)
+    note = metadata_json_str.encode("utf-8")
 
-    # Build ASA creation transaction
-    note = json.dumps(metadata).encode("utf-8")
+    # --- Path 1: Call deployed ARC4 contract (preferred) ---
+    if settings.ALGORAND_APP_ID > 0:
+        logger.info(
+            "Calling ARC4 contract app_id=%d for invoice %s",
+            settings.ALGORAND_APP_ID,
+            invoice_id,
+        )
+        try:
+            from algosdk.atomic_transaction_composer import (
+                AccountTransactionSigner,
+                AtomicTransactionComposer,
+            )
+            from algosdk.abi import Method
+
+            # ABI method signature for InvoiceNFT.create_nft
+            method = Method.from_signature(
+                "create_nft(string,uint64,string,string)uint64"
+            )
+
+            props = metadata.get("properties", {})
+            risk_score = int(props.get("risk_score", 0))
+            decision = str(props.get("risk_level", "unknown"))
+            invoice_id_arg = str(invoice_id)
+
+            signer = AccountTransactionSigner(private_key)
+            atc = AtomicTransactionComposer()
+            atc.add_method_call(
+                app_id=settings.ALGORAND_APP_ID,
+                method=method,
+                sender=sender,
+                sp=params,
+                signer=signer,
+                method_args=[invoice_id_arg, risk_score, decision, metadata_json_str],
+                note=note,
+            )
+            result = atc.execute(algod_client, wait_rounds=4)
+            txn_id = result.tx_ids[0]
+            asset_id = int(result.abi_results[0].return_value)
+
+            logger.info(
+                "ARC4 contract minted ASA: asset_id=%d txn_id=%s invoice=%s",
+                asset_id, txn_id, invoice_id,
+            )
+            return asset_id, txn_id
+
+        except Exception as exc:
+            logger.warning(
+                "ARC4 contract call failed (%s), falling back to direct ASA creation",
+                exc,
+            )
+
+    # --- Path 2: Direct ASA creation (fallback / no contract configured) ---
+    logger.info("Direct ASA creation for invoice %s", invoice_id)
+    invoice_number = metadata.get("properties", {}).get("invoice_number", "INV")
+    asset_name = f"CF-{invoice_number}"[:32]
     txn = transaction.AssetConfigTxn(
         sender=sender,
         sp=params,
@@ -125,7 +185,7 @@ def _create_asa(
         decimals=0,
         default_frozen=False,
         unit_name="CFINV",
-        asset_name=f"ChainFactor-{metadata.get('properties', {}).get('invoice_number', 'INV')}",
+        asset_name=asset_name,
         url=f"https://chainfactor.ai/invoice/{invoice_id}",
         note=note,
         manager=sender,
@@ -133,22 +193,15 @@ def _create_asa(
         freeze=sender,
         clawback=sender,
     )
-
-    # Sign and send
     signed_txn = txn.sign(private_key)
     txn_id = algod_client.send_transaction(signed_txn)
-
-    # Wait for confirmation
     confirmed = transaction.wait_for_confirmation(algod_client, txn_id, 4)
     asset_id = confirmed["asset-index"]
 
     logger.info(
-        "ASA created: asset_id=%d txn_id=%s invoice=%s",
-        asset_id,
-        txn_id,
-        invoice_id,
+        "Direct ASA created: asset_id=%d txn_id=%s invoice=%s",
+        asset_id, txn_id, invoice_id,
     )
-
     return asset_id, txn_id
 
 
