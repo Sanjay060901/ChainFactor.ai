@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useWallet } from "@txnlab/use-wallet-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "📊" },
@@ -11,6 +13,35 @@ const NAV_ITEMS = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const { activeWallet, activeAccount, wallets } = useWallet();
+
+  const connected = !!activeAccount;
+  const shortAddr = activeAccount?.address
+    ? `${activeAccount.address.slice(0, 4)}...${activeAccount.address.slice(-4)}`
+    : null;
+
+  async function handleWalletClick() {
+    if (connected && activeWallet) {
+      activeWallet.disconnect();
+    } else {
+      // Connect with first available wallet (Pera)
+      const wallet = wallets?.[0];
+      if (wallet) {
+        try {
+          await wallet.connect();
+        } catch {
+          // user cancelled
+        }
+      }
+    }
+  }
+
+  function handleLogout() {
+    logout();
+    router.push("/auth/login");
+  }
 
   return (
     <nav className="sticky top-0 z-50 border-b border-blue-500/10 bg-slate-900/70 backdrop-blur-xl">
@@ -49,14 +80,31 @@ export function Navbar() {
 
           {/* Wallet + User */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/5 px-4 py-1.5">
-              <span className="h-2 w-2 rounded-full bg-yellow-400 animate-pulse" />
+            <button
+              onClick={handleWalletClick}
+              className={`flex items-center gap-2 rounded-full border px-4 py-1.5 transition-colors ${
+                connected
+                  ? "border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20"
+                  : "border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/15"
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${connected ? "bg-emerald-400" : "bg-yellow-400 animate-pulse"}`} />
               <span className="text-xs font-medium text-slate-400">
-                Not connected
+                {connected ? `🔗 ${shortAddr}` : "Connect Wallet"}
               </span>
-            </div>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/20 text-xs font-medium text-blue-400">
-              U
+            </button>
+            <div className="relative group">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/20 text-xs font-medium text-blue-400 cursor-pointer">
+                {user?.name?.charAt(0)?.toUpperCase() || "S"}
+              </div>
+              <div className="absolute right-0 top-10 hidden group-hover:block w-48 rounded-lg border border-blue-500/20 bg-slate-900/95 backdrop-blur-xl p-2 shadow-xl">
+                <p className="px-3 py-1.5 text-xs text-slate-400">{user?.name || "Sanjay M"}</p>
+                <p className="px-3 pb-1.5 text-[10px] text-slate-600">{user?.email || "sanjay@chainfactor.ai"}</p>
+                <hr className="border-slate-800 my-1" />
+                <button onClick={handleLogout} className="w-full rounded-md px-3 py-1.5 text-left text-xs text-red-400 hover:bg-red-500/10 transition-colors">
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
         </div>

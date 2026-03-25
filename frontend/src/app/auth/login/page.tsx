@@ -1,16 +1,33 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent } from "react";
+import { FormEvent, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login, isLoading, error } = useAuth();
+  const [phoneOrEmail, setPhoneOrEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    try {
+      await login(phoneOrEmail, password);
+      router.push("/dashboard");
+    } catch {
+      // error is set in useAuth
+    }
+  }
+
+  function handleDemoLogin() {
+    // Demo mode: skip auth, store demo user
+    localStorage.setItem("access_token", "demo-token");
+    localStorage.setItem("user", JSON.stringify({ id: "demo", name: "Sanjay M", email: "sanjay@chainfactor.ai", phone: "+919876543210" }));
     router.push("/dashboard");
+    window.location.href = "/dashboard";
   }
 
   return (
@@ -39,16 +56,38 @@ export default function LoginPage() {
             <Link href="/auth/register" className="flex-1 rounded-md py-2 text-center text-sm font-medium text-slate-500 hover:text-slate-300 transition-colors">Register</Link>
           </div>
 
+          {error && (
+            <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-300">Phone / Email</label>
-              <input type="text" placeholder="+91 9876543210" className="glass-input mt-1 w-full text-sm" />
+              <input
+                type="text"
+                placeholder="+91 9876543210"
+                value={phoneOrEmail}
+                onChange={(e) => setPhoneOrEmail(e.target.value)}
+                className="glass-input mt-1 w-full text-sm"
+                required
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-300">Password</label>
-              <input type="password" placeholder="••••••••" className="glass-input mt-1 w-full text-sm" />
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="glass-input mt-1 w-full text-sm"
+                required
+              />
             </div>
-            <button type="submit" className="btn-glow w-full py-2.5 text-sm">Sign In</button>
+            <button type="submit" disabled={isLoading} className="btn-glow w-full py-2.5 text-sm disabled:opacity-50">
+              {isLoading ? "Signing in..." : "Sign In"}
+            </button>
           </form>
 
           <div className="mt-4 flex items-center gap-3">
@@ -56,7 +95,7 @@ export default function LoginPage() {
             <span className="text-xs text-slate-500">or</span>
             <div className="flex-1 h-px bg-slate-700" />
           </div>
-          <button onClick={() => router.push("/dashboard")} className="btn-outline-glow mt-3 w-full py-2.5 text-sm">OTP Login</button>
+          <button onClick={handleDemoLogin} className="btn-outline-glow mt-3 w-full py-2.5 text-sm">🚀 Demo Mode (No Login)</button>
         </div>
       </motion.div>
     </main>

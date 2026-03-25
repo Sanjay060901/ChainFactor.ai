@@ -1,12 +1,8 @@
 "use client";
 
-/**
- * App-level providers: Algorand wallet context.
- * Must be "use client" because wallet providers use browser APIs.
- */
-
 import { WalletProvider, WalletManager, NetworkId } from "@txnlab/use-wallet-react";
 import { ReactNode, useMemo } from "react";
+import { AuthContext, useAuthState } from "@/hooks/useAuth";
 
 function WalletProviderWrapper({ children }: { children: ReactNode }) {
   const manager = useMemo(
@@ -27,5 +23,10 @@ function WalletProviderWrapper({ children }: { children: ReactNode }) {
 }
 
 export function Providers({ children }: { children: ReactNode }) {
-  return <WalletProviderWrapper>{children}</WalletProviderWrapper>;
+  const auth = useAuthState();
+  return (
+    <AuthContext.Provider value={auth}>
+      <WalletProviderWrapper>{children}</WalletProviderWrapper>
+    </AuthContext.Provider>
+  );
 }

@@ -12,9 +12,16 @@
     "export": "next build"
   },
   "dependencies": {
+    "@agoralabs-sh/avm-web-provider": "^1.7.0",
+    "@blockshake/defly-connect": "^1.2.1",
+    "@perawallet/connect": "^1.5.1",
     "@txnlab/use-wallet-react": "^4.6.0",
-    "algosdk": "^3.0.0",
+    "@walletconnect/modal": "^2.7.0",
+    "@walletconnect/sign-client": "^2.23.8",
+    "@walletconnect/types": "^2.23.8",
+    "algosdk": "^3.5.2",
     "framer-motion": "^12.38.0",
+    "lute-connect": "^1.7.0",
     "next": "14.2.29",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
