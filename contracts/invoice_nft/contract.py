@@ -19,6 +19,7 @@ Key design:
 
 from algopy import (
     ARC4Contract,
+    Bytes,
     Global,
     GlobalState,
     Txn,
@@ -60,10 +61,8 @@ class InvoiceNFT(ARC4Contract):
         # Authorization: only app creator can mint
         assert Txn.sender == Global.creator_address, "Only app creator can mint NFTs"
 
-        # Build asset name: "ChainFactor Invoice #<invoice_id>"
-        # Algorand asset name max = 32 bytes; truncate invoice_id if needed.
-        # We use a prefix + first 8 chars of the UUID for readability.
-        asset_name_prefix = b"CF Invoice #"
+        # Build asset name using algopy Bytes (no Python byte literals allowed)
+        asset_name_prefix = Bytes(b"CF Invoice #")
         invoice_id_native = invoice_id.native
         # Take up to 20 chars of invoice_id to stay within 32-byte limit
         truncated_id = op.extract(invoice_id_native.bytes, UInt64(0), UInt64(20))
@@ -114,7 +113,7 @@ class InvoiceNFT(ARC4Contract):
         Returns:
             True if the owner holds a balance > 0 of the asset, False otherwise.
         """
-        balance, has_asset = op.AssetHolding.asset_balance(
+        balance, has_asset = op.AssetHoldingGet.asset_balance(
             owner.native, asset_id.native
         )
         if has_asset and balance > UInt64(0):
