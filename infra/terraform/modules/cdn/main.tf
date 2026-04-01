@@ -41,6 +41,22 @@ resource "aws_cloudfront_distribution" "frontend" {
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
 
+  # ALB origin for API and WebSocket proxying (avoids mixed content)
+  dynamic "origin" {
+    for_each = var.alb_domain_name != "" ? [1] : []
+    content {
+      domain_name = var.alb_domain_name
+      origin_id   = "alb-backend"
+
+      custom_origin_config {
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "http-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
+      }
+    }
+  }
+
   # Default cache behavior
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
@@ -59,6 +75,31 @@ resource "aws_cloudfront_distribution" "frontend" {
     min_ttl     = 0
     default_ttl = 3600
     max_ttl     = 86400
+  }
+
+  # API requests -> ALB (no caching, forward all)
+  dynamic "ordered_cache_behavior" {
+    for_each = var.alb_domain_name != "" ? ["/api/*", "/health", "/ws/*", "/openapi.json", "/docs", "/docs/*", "/redoc"] : []
+    content {
+      path_pattern           = ordered_cache_behavior.value
+      allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+      cached_methods         = ["GET", "HEAD"]
+      target_origin_id       = "alb-backend"
+      viewer_protocol_policy = "redirect-to-https"
+      compress               = true
+
+      forwarded_values {
+        query_string = true
+        headers      = ["Authorization", "Content-Type", "Accept", "Origin", "Referer"]
+        cookies {
+          forward = "all"
+        }
+      }
+
+      min_ttl     = 0
+      default_ttl = 0
+      max_ttl     = 0
+    }
   }
 
   # SPA routing: return index.html for 403 (S3 returns 403 for missing keys with OAC)

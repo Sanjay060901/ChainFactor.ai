@@ -13,7 +13,7 @@ from app.modules.ws.handler import websocket_invoice_handler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
-    # Startup: DB pool, Redis connection, etc.
+    # Migrations run via entrypoint.sh before uvicorn starts
     yield
     # Shutdown: close connections
 

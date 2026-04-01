@@ -12,15 +12,17 @@ terraform {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 # ---------------------------------------------------------------------------
 # Invoice Storage Bucket (private, versioned, encrypted)
 # ---------------------------------------------------------------------------
 
 resource "aws_s3_bucket" "invoices" {
-  bucket = "${var.project_name}-${var.environment}-invoices"
+  bucket = "${var.project_name}-${var.environment}-invoices-${data.aws_caller_identity.current.account_id}"
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false # Hackathon; set true for production
   }
 
   tags = merge(var.tags, {

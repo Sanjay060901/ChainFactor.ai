@@ -49,6 +49,18 @@ module "networking" {
 }
 
 # ---------------------------------------------------------------------------
+# 0. ECR - Container Registry
+# ---------------------------------------------------------------------------
+
+module "ecr" {
+  source = "../../modules/ecr"
+
+  project_name = var.project_name
+  environment  = var.environment
+  tags         = local.common_tags
+}
+
+# ---------------------------------------------------------------------------
 # ECS Security Group (root-level to break circular dependency)
 # Compute needs DB/Redis endpoints -> DB/Redis need ECS SG ID.
 # Creating the SG here allows all three modules to reference it.
@@ -203,32 +215,27 @@ module "compute" {
   alb_security_group_id  = module.load_balancer.alb_security_group_id
   task_execution_role_arn = module.iam.task_execution_role_arn
   task_role_arn          = module.iam.task_role_arn
-  container_image        = var.container_image
+  container_image        = "${module.ecr.repository_url}:latest"
   container_port         = 8000
   tags                   = local.common_tags
 
   environment_variables = {
-    ENVIRONMENT           = var.environment
-    PROJECT_NAME          = var.project_name
+    APP_ENV               = var.environment
     AWS_REGION            = var.aws_region
-    DATABASE_HOST         = module.database.endpoint
-    DATABASE_PORT         = tostring(module.database.port)
-    DATABASE_NAME         = module.database.db_name
-    DATABASE_USERNAME     = var.db_username
-    REDIS_HOST            = module.cache.endpoint
-    REDIS_PORT            = tostring(module.cache.port)
+    DATABASE_URL          = "postgresql+asyncpg://${var.db_username}:PLACEHOLDER@${module.database.endpoint}:${module.database.port}/${module.database.db_name}"
+    REDIS_URL             = "redis://${module.cache.endpoint}:${module.cache.port}/0"
     S3_BUCKET_NAME        = module.storage.invoice_bucket_name
     COGNITO_USER_POOL_ID  = module.auth.user_pool_id
     COGNITO_APP_CLIENT_ID = module.auth.app_client_id
     ALGORAND_ALGOD_URL    = "https://testnet-api.algonode.cloud"
     ALGORAND_INDEXER_URL  = "https://testnet-idx.algonode.cloud"
     DEMO_MODE             = "true"
+    CORS_ORIGINS          = "[\"https://${module.cdn.distribution_domain_name}\"]"
   }
 
   secrets = {
     DB_PASSWORD                  = module.secrets.db_password_secret_arn
     ALGORAND_APP_WALLET_MNEMONIC = module.secrets.algorand_mnemonic_secret_arn
-    APP_CONFIG                   = module.secrets.app_config_secret_arn
   }
 }
 
@@ -244,6 +251,7 @@ module "cdn" {
   frontend_bucket_regional_domain_name = module.storage.frontend_bucket_regional_domain_name
   frontend_bucket_arn                  = module.storage.frontend_bucket_arn
   frontend_bucket_name                 = module.storage.frontend_bucket_name
+  alb_domain_name                      = module.load_balancer.alb_dns_name
   tags                                 = local.common_tags
 }
 

@@ -1,5 +1,7 @@
 """Application configuration. Reads from environment variables, falls back to defaults."""
 
+import os
+
 from pydantic_settings import BaseSettings
 
 
@@ -60,6 +62,13 @@ class Settings(BaseSettings):
         "env_file_encoding": "utf-8",
         "case_sensitive": True,
     }
+
+    def get_database_url(self) -> str:
+        """Return DATABASE_URL with DB_PASSWORD injected if present (ECS Secrets Manager)."""
+        db_password = os.environ.get("DB_PASSWORD")
+        if db_password and "PLACEHOLDER" in self.DATABASE_URL:
+            return self.DATABASE_URL.replace("PLACEHOLDER", db_password)
+        return self.DATABASE_URL
 
 
 settings = Settings()

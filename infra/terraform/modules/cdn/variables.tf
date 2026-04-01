@@ -28,3 +28,9 @@ variable "frontend_bucket_name" {
   description = "Name of the frontend S3 bucket (for bucket policy)"
   type        = string
 }
+
+variable "alb_domain_name" {
+  description = "DNS name of the ALB to proxy API requests through CloudFront"
+  type        = string
+  default     = ""
+}

@@ -69,13 +69,3 @@ variable "algorand_app_wallet_mnemonic" {
   type        = string
   sensitive   = true
 }
-
-# ---------------------------------------------------------------------------
-# Compute
-# ---------------------------------------------------------------------------
-
-variable "container_image" {
-  description = "Docker image URI for the backend container"
-  type        = string
-  default     = "public.ecr.aws/docker/library/python:3.11-slim"
-}

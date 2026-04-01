@@ -4,8 +4,7 @@ const path = require("path");
 const noopPath = path.resolve(__dirname, "src/lib/noop.js");
 
 const nextConfig = {
-  // output: "export" — enable for production static builds (S3 + CloudFront)
-  // Removed for dev to allow dynamic [id] routes without generateStaticParams
+  output: "export",
   images: {
     unoptimized: true,
   },
