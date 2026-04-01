@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     DEMO_MODE: bool = False
 
+    # Auth (self-signed JWT when Cognito is not configured)
+    JWT_SECRET: str = "chainfactor-dev-secret-change-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRY_HOURS: int = 24
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 

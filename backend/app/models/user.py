@@ -17,6 +17,7 @@ class User(Base, UUIDMixin, TimestampMixin):
     phone: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     company_name: Mapped[str] = mapped_column(String(512), nullable=False)
     gstin: Mapped[str] = mapped_column(String(15), nullable=False, index=True)
+    password_hash: Mapped[str | None] = mapped_column(String(256), nullable=True)
 
     # Algorand wallet (optional, linked after registration)
     wallet_address: Mapped[str | None] = mapped_column(String(58), nullable=True)

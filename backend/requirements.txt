@@ -23,6 +23,8 @@ py-algorand-sdk==2.11.1
 # Auth
 python-jose[cryptography]==3.4.0
 cryptography==45.0.3
+PyJWT>=2.10.1
+bcrypt>=4.2.0
 
 # HTTP
 httpx==0.28.1

@@ -229,7 +229,8 @@ module "compute" {
     COGNITO_APP_CLIENT_ID = module.auth.app_client_id
     ALGORAND_ALGOD_URL    = "https://testnet-api.algonode.cloud"
     ALGORAND_INDEXER_URL  = "https://testnet-idx.algonode.cloud"
-    DEMO_MODE             = "true"
+    DEMO_MODE             = "false"
+    JWT_SECRET            = "chainfactor-staging-jwt-k8x9m2p4v7"
     CORS_ORIGINS          = "[\"https://${module.cdn.distribution_domain_name}\"]"
   }
 

@@ -2,7 +2,9 @@
 
 import logging
 import uuid
+from datetime import datetime, timedelta, timezone
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
@@ -11,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
-from app.modules.auth.jwt_service import JWTError_, verify_cognito_token
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,28 @@ bearer_scheme = HTTPBearer(auto_error=False)
 DEMO_USER_SUB = "demo-user-sub-00000000"
 
 
+def create_access_token(user_id: str, email: str) -> str:
+    """Create a self-signed JWT access token."""
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=settings.JWT_EXPIRY_HOURS),
+        "iat": datetime.now(timezone.utc),
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def create_refresh_token(user_id: str) -> str:
+    """Create a self-signed JWT refresh token (longer expiry)."""
+    payload = {
+        "sub": user_id,
+        "type": "refresh",
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+        "iat": datetime.now(timezone.utc),
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
@@ -29,12 +52,13 @@ async def get_current_user(
     """Extract and verify JWT from Authorization header, return User from DB.
 
     In DEMO_MODE, returns a stub user without JWT verification.
+    Otherwise, verifies self-signed JWT and looks up user in DB.
     """
     # --- DEMO MODE: skip JWT, return/create stub user ---
     if settings.DEMO_MODE:
         return await _get_or_create_demo_user(db)
 
-    # --- PRODUCTION: verify Cognito JWT ---
+    # --- PRODUCTION: verify JWT ---
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -43,38 +67,40 @@ async def get_current_user(
         )
 
     try:
-        claims = await verify_cognito_token(credentials.credentials)
-    except JWTError_ as e:
+        payload = jwt.decode(
+            credentials.credentials,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+    except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=e.message,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    cognito_sub = claims.get("sub")
-    if not cognito_sub:
+    user_id = payload.get("sub")
+    if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token missing 'sub' claim",
         )
 
-    # Look up user in DB by cognito_sub
-    result = await db.execute(select(User).where(User.cognito_sub == cognito_sub))
+    # Look up user in DB by ID
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
     if not user:
-        # First login after Cognito registration -- create DB record
-        user = User(
-            cognito_sub=cognito_sub,
-            name=claims.get("name", ""),
-            email=claims.get("email", ""),
-            phone=claims.get("phone_number", ""),
-            company_name=claims.get("custom:company_name", ""),
-            gstin=claims.get("custom:gstin", ""),
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
         )
-        db.add(user)
-        await db.flush()
-        logger.info("Created new user from Cognito: %s", cognito_sub)
 
     return user
 
@@ -102,11 +128,7 @@ async def _get_or_create_demo_user(db: AsyncSession) -> User:
 
 
 def require_owner(invoice_user_id: uuid.UUID, current_user: User) -> None:
-    """IDOR prevention: verify the resource belongs to the current user.
-
-    Usage in endpoints:
-        require_owner(invoice.user_id, current_user)
-    """
+    """IDOR prevention: verify the resource belongs to the current user."""
     if invoice_user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

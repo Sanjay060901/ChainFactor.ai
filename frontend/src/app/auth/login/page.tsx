@@ -22,12 +22,14 @@ export default function LoginPage() {
     }
   }
 
-  function handleDemoLogin() {
-    // Demo mode: skip auth, store demo user
-    localStorage.setItem("access_token", "demo-token");
-    localStorage.setItem("user", JSON.stringify({ id: "demo", name: "Sanjay M", email: "sanjay@chainfactor.ai", phone: "+919876543210" }));
-    router.push("/dashboard");
-    window.location.href = "/dashboard";
+  async function handleDemoLogin() {
+    // Demo mode: login with demo credentials
+    try {
+      await login("demo@chainfactor.ai", "Demo@1234");
+      router.push("/dashboard");
+    } catch {
+      // fallback if demo user not seeded
+    }
   }
 
   return (

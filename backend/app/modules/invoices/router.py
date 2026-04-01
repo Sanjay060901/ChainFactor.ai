@@ -449,8 +449,146 @@ async def get_invoice(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get invoice detail. Auth required (IDOR prevention added)."""
-    return STUB_INVOICE_DETAIL
+    """Get invoice detail from DB with IDOR prevention."""
+    invoice = await _get_invoice_for_user(db, invoice_id, current_user.id)
+
+    # Build response from DB columns (JSONB fields populated by pipeline)
+    extracted = invoice.extracted_data or {}
+    seller_data = extracted.get("seller", {})
+    buyer_data = extracted.get("buyer", {})
+
+    extracted_data = ExtractedData(
+        seller=SellerBuyer(
+            name=seller_data.get("name", "Unknown"),
+            gstin=seller_data.get("gstin", ""),
+            address=seller_data.get("address", ""),
+        ),
+        buyer=SellerBuyer(
+            name=buyer_data.get("name", "Unknown"),
+            gstin=buyer_data.get("gstin", ""),
+            address=buyer_data.get("address", ""),
+        ),
+        invoice_number=extracted.get("invoice_number", invoice.invoice_number),
+        invoice_date=extracted.get("invoice_date", ""),
+        due_date=extracted.get("due_date", ""),
+        subtotal=extracted.get("subtotal", 0),
+        tax_amount=extracted.get("tax_amount", 0),
+        tax_rate=extracted.get("tax_rate", 0),
+        total_amount=extracted.get("total_amount", 0),
+        line_items=[
+            LineItem(**item) for item in extracted.get("line_items", [])
+        ],
+    )
+
+    # Validation
+    val = invoice.validation_result or {}
+    validation = ValidationResult(
+        is_valid=val.get("is_valid", True),
+        errors=val.get("errors", []),
+        warnings=val.get("warnings", []),
+    )
+
+    # GST Compliance
+    gst = invoice.gst_compliance or {}
+    gst_compliance = GSTComplianceResult(
+        is_compliant=gst.get("is_compliant", True),
+        details=gst.get("details", {}),
+    )
+
+    # Fraud Detection
+    fraud = invoice.fraud_detection or {}
+    fraud_layers = [
+        FraudLayer(
+            name=layer.get("name", ""),
+            result=layer.get("result", "pass"),
+            detail=layer.get("detail", ""),
+            confidence=layer.get("confidence", 0),
+        )
+        for layer in fraud.get("layers", [])
+    ]
+    fraud_detection = FraudDetectionResult(
+        overall=fraud.get("overall", "pass"),
+        confidence=fraud.get("confidence", 0),
+        flags=fraud.get("flags", []),
+        layers=fraud_layers,
+    )
+
+    # GSTIN Verification
+    gstn = invoice.gstin_verification or {}
+    gstin_verification = GSTINVerification(
+        verified=gstn.get("verified", False),
+        status=gstn.get("status", "unknown"),
+        details=gstn.get("details", {}),
+    )
+
+    # Buyer Intel
+    bi = invoice.buyer_intel or {}
+    buyer_intel = BuyerIntel(
+        payment_history=bi.get("payment_history", "unknown"),
+        avg_days=bi.get("avg_days", 0),
+        previous_count=bi.get("previous_count", 0),
+    )
+
+    # Credit Score
+    cs = invoice.credit_score or {}
+    credit_score = CreditScore(
+        score=cs.get("score", 0),
+        rating=cs.get("rating", "unknown"),
+    )
+
+    # Company Info
+    ci = invoice.company_info or {}
+    company_info = CompanyInfo(
+        status=ci.get("status", "unknown"),
+        incorporated=ci.get("incorporated", ""),
+        paid_up_capital=ci.get("paid_up_capital", 0),
+    )
+
+    # Risk Assessment
+    ra = invoice.risk_assessment or {}
+    risk_assessment = RiskAssessment(
+        score=ra.get("score", invoice.risk_score or 0),
+        level=ra.get("level", "unknown"),
+        explanation=ra.get("explanation", invoice.ai_explanation or ""),
+    )
+
+    # Underwriting
+    uw = invoice.underwriting or {}
+    underwriting = UnderwritingResult(
+        decision=uw.get("decision", invoice.status),
+        rule_matched=uw.get("rule_matched", ""),
+        cross_validation=uw.get("cross_validation", ""),
+        reasoning=uw.get("reasoning", ""),
+    )
+
+    # NFT Info
+    nft_info = None
+    if invoice.nft_record:
+        nft = invoice.nft_record
+        nft_info = NFTInfo(
+            asset_id=nft.asset_id,
+            status=nft.status,
+            explorer_url=f"{settings.PERA_EXPLORER_BASE_URL}/asset/{nft.asset_id}/" if nft.asset_id else "",
+            metadata=nft.arc69_metadata or {},
+        )
+
+    return InvoiceDetailResponse(
+        id=str(invoice.id),
+        invoice_number=invoice.invoice_number,
+        status=invoice.status,
+        created_at=invoice.created_at,
+        extracted_data=extracted_data,
+        validation=validation,
+        gst_compliance=gst_compliance,
+        fraud_detection=fraud_detection,
+        gstin_verification=gstin_verification,
+        buyer_intel=buyer_intel,
+        credit_score=credit_score,
+        company_info=company_info,
+        risk_assessment=risk_assessment,
+        underwriting=underwriting,
+        nft=nft_info,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -681,91 +819,67 @@ async def nft_claim(
 
 
 @router.get("/{invoice_id}/audit-trail", response_model=AuditTrailResponse)
-async def get_audit_trail(invoice_id: str):
+async def get_audit_trail(
+    invoice_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get audit trail from DB agent_traces table."""
+    from sqlalchemy import select as sa_select
+    from app.models.agent_trace import AgentTrace as AgentTraceModel
+
+    invoice = await _get_invoice_for_user(db, invoice_id, current_user.id)
+
+    result = await db.execute(
+        sa_select(AgentTraceModel)
+        .where(AgentTraceModel.invoice_id == invoice.id)
+        .order_by(AgentTraceModel.created_at)
+    )
+    traces = result.scalars().all()
+
+    agents = []
+    total_duration = 0
+    for trace in traces:
+        steps_data = trace.steps or []
+        audit_steps = [
+            AuditStep(
+                step_number=s.get("step_number", i + 1),
+                tool_name=s.get("tool_name", ""),
+                started_at=s.get("started_at", ""),
+                duration_ms=s.get("duration_ms", 0),
+                input_summary=s.get("input_summary", ""),
+                output_summary=s.get("output_summary", ""),
+                result=s.get("result", {}),
+                status=s.get("status", "success"),
+            )
+            for i, s in enumerate(steps_data)
+        ]
+        agents.append(
+            AgentTrace(
+                name=trace.agent_name,
+                model=trace.model or "sonnet-4.6",
+                started_at=str(trace.created_at) if trace.created_at else "",
+                duration_ms=trace.duration_ms or 0,
+                steps=audit_steps,
+            )
+        )
+        total_duration += trace.duration_ms or 0
+
+    handoff_data = []
+    for trace in traces:
+        hc = trace.handoff_context
+        if hc and isinstance(hc, dict) and hc.get("from_agent"):
+            handoff_data.append(
+                Handoff(
+                    from_agent=hc.get("from_agent", ""),
+                    to_agent=hc.get("to_agent", ""),
+                    context_keys=hc.get("context_keys", []),
+                )
+            )
+
     return AuditTrailResponse(
         invoice_id=invoice_id,
-        total_duration_ms=102000,
-        agents=[
-            AgentTrace(
-                name="Invoice Processing Agent",
-                model="sonnet-4.6",
-                started_at="2026-03-18T10:00:00Z",
-                duration_ms=72000,
-                steps=[
-                    AuditStep(
-                        step_number=1,
-                        tool_name="extract_invoice",
-                        started_at="2026-03-18T10:00:00Z",
-                        duration_ms=3200,
-                        input_summary="invoice_march_2026.pdf (1.2 MB)",
-                        output_summary="23 fields extracted, 2 line items",
-                        result={"fields_count": 23, "confidence": 98.2},
-                        status="success",
-                    ),
-                    AuditStep(
-                        step_number=2,
-                        tool_name="validate_fields",
-                        started_at="2026-03-18T10:00:03Z",
-                        duration_ms=1100,
-                        input_summary="23 extracted fields",
-                        output_summary="All fields valid",
-                        result={"valid": 23, "invalid": 0},
-                        status="success",
-                    ),
-                    AuditStep(
-                        step_number=3,
-                        tool_name="validate_gst_compliance",
-                        started_at="2026-03-18T10:00:04Z",
-                        duration_ms=800,
-                        input_summary="2 HSN codes, 18% rate",
-                        output_summary="GST compliant",
-                        result={"compliant": True},
-                        status="success",
-                    ),
-                ],
-            ),
-            AgentTrace(
-                name="Underwriting Agent",
-                model="sonnet-4.6",
-                started_at="2026-03-18T10:01:12Z",
-                duration_ms=30000,
-                steps=[
-                    AuditStep(
-                        step_number=11,
-                        tool_name="cross_validate_outputs",
-                        started_at="2026-03-18T10:01:12Z",
-                        duration_ms=2400,
-                        input_summary="All tool outputs",
-                        output_summary="All consistent",
-                        result={"discrepancies": 0},
-                        status="success",
-                    ),
-                    AuditStep(
-                        step_number=12,
-                        tool_name="underwriting_decision",
-                        started_at="2026-03-18T10:01:15Z",
-                        duration_ms=1800,
-                        input_summary="Risk 82, CIBIL 750, 0 flags",
-                        output_summary="AUTO-APPROVED (Rule 2)",
-                        result={"decision": "approved", "rule": 2},
-                        status="success",
-                    ),
-                ],
-            ),
-        ],
-        handoffs=[
-            Handoff(
-                from_agent="Invoice Processing Agent",
-                to_agent="Underwriting Agent",
-                context_keys=[
-                    "extracted_data",
-                    "risk_score",
-                    "fraud_result",
-                    "gst_compliance",
-                    "gstin_status",
-                    "credit_score",
-                    "company_info",
-                ],
-            ),
-        ],
+        total_duration_ms=total_duration,
+        agents=agents,
+        handoffs=handoff_data,
     )
