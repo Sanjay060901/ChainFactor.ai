@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useWallet } from "@txnlab/use-wallet-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useRef, useState } from "react";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "📊" },
@@ -42,6 +43,19 @@ export function Navbar() {
     logout();
     router.push("/auth/login");
   }
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <nav className="sticky top-0 z-50 border-b border-blue-500/10 bg-slate-900/70 backdrop-blur-xl">
@@ -93,18 +107,23 @@ export function Navbar() {
                 {connected ? `🔗 ${shortAddr}` : "Connect Wallet"}
               </span>
             </button>
-            <div className="relative group">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/20 text-xs font-medium text-blue-400 cursor-pointer">
+            <div className="relative" ref={dropdownRef}>
+              <div
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/20 text-xs font-medium text-blue-400 cursor-pointer"
+              >
                 {user?.name?.charAt(0)?.toUpperCase() || "S"}
               </div>
-              <div className="absolute right-0 top-10 hidden group-hover:block w-48 rounded-lg border border-blue-500/20 bg-slate-900/95 backdrop-blur-xl p-2 shadow-xl">
-                <p className="px-3 py-1.5 text-xs text-slate-400">{user?.name || "Sanjay M"}</p>
-                <p className="px-3 pb-1.5 text-[10px] text-slate-600">{user?.email || "sanjay@chainfactor.ai"}</p>
-                <hr className="border-slate-800 my-1" />
-                <button onClick={handleLogout} className="w-full rounded-md px-3 py-1.5 text-left text-xs text-red-400 hover:bg-red-500/10 transition-colors">
-                  Sign Out
-                </button>
-              </div>
+              {dropdownOpen && (
+                <div className="absolute right-0 top-10 w-48 rounded-lg border border-blue-500/20 bg-slate-900/95 backdrop-blur-xl p-2 shadow-xl z-50">
+                  <p className="px-3 py-1.5 text-xs text-slate-400">{user?.name || "User"}</p>
+                  <p className="px-3 pb-1.5 text-[10px] text-slate-600">{user?.email || ""}</p>
+                  <hr className="border-slate-800 my-1" />
+                  <button onClick={handleLogout} className="w-full rounded-md px-3 py-1.5 text-left text-xs text-red-400 hover:bg-red-500/10 transition-colors">
+                    Sign Out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -47,26 +47,31 @@ export default function InvoiceDetailClient({ params }: { params: { id: string }
   }
 
   const extracted = invoice.extracted_data || {};
-  const riskScore = invoice.risk_score ?? extracted.risk_score ?? 82;
+  const seller = extracted.seller || {};
+  const buyer = extracted.buyer || {};
+  const riskScore = invoice.risk_assessment?.score ?? invoice.risk_score ?? extracted.risk_score ?? 0;
   const riskLevel = riskScore >= 70 ? "LOW RISK" : riskScore >= 40 ? "MEDIUM RISK" : "HIGH RISK";
   const riskColor = riskScore >= 70 ? "text-emerald-400" : riskScore >= 40 ? "text-yellow-400" : "text-red-400";
   const status = invoice.status || "processing";
-  const fraudFlags = invoice.fraud_flags || [];
-  const gstCompliance = extracted.gst_compliance || {};
-  const gstnVerification = extracted.gstn_verification || {};
+  const fraudDetection = invoice.fraud_detection || {};
+  const fraudLayers = fraudDetection.layers || [];
+  const fraudFlags = fraudDetection.flags || [];
+  const gstCompliance = invoice.gst_compliance || {};
+  const gstnVerification = invoice.gstin_verification || {};
   const underwriting = invoice.underwriting || {};
-  const assetId = invoice.nft_asset_id;
+  const nftData = invoice.nft || {};
+  const assetId = nftData.asset_id;
 
   const fields = [
-    ["Seller", extracted.seller_name || invoice.seller_name || "—"],
-    ["GSTIN", extracted.seller_gstin || "—"],
-    ["Buyer", extracted.buyer_name || "—"],
-    ["Buyer GSTIN", extracted.buyer_gstin || "—"],
+    ["Seller", seller.name || "—"],
+    ["GSTIN", seller.gstin || "—"],
+    ["Buyer", buyer.name || "—"],
+    ["Buyer GSTIN", buyer.gstin || "—"],
     ["Invoice #", extracted.invoice_number || invoice.invoice_number || "—"],
     ["Date", extracted.invoice_date || "—"],
-    ["Amount", extracted.total_amount ? `₹${Number(extracted.total_amount).toLocaleString("en-IN")}` : "—"],
+    ["Subtotal", extracted.subtotal ? `₹${Number(extracted.subtotal).toLocaleString("en-IN")}` : "—"],
     ["Tax", extracted.tax_amount ? `₹${Number(extracted.tax_amount).toLocaleString("en-IN")}` : "—"],
-    ["Total", extracted.grand_total ? `₹${Number(extracted.grand_total).toLocaleString("en-IN")}` : "—"],
+    ["Total", extracted.total_amount ? `₹${Number(extracted.total_amount).toLocaleString("en-IN")}` : "—"],
     ["Due", extracted.due_date || "—"],
   ];
 
@@ -121,11 +126,11 @@ export default function InvoiceDetailClient({ params }: { params: { id: string }
         </motion.div>
         <motion.div {...fadeUp(0.3)} whileHover={{ scale: 1.03 }} className="glass-card p-6 text-center">
           <h3 className="text-sm font-medium text-slate-400">GST Compliance</h3>
-          <p className="mt-4 text-3xl">{gstCompliance.compliant !== false ? "✅" : "❌"}</p>
-          <p className={`mt-2 text-sm font-medium ${gstCompliance.compliant !== false ? "text-emerald-400" : "text-red-400"}`}>
-            {gstCompliance.compliant !== false ? "Compliant" : "Non-Compliant"}
+          <p className="mt-4 text-3xl">{gstCompliance.is_compliant !== false ? "✅" : "❌"}</p>
+          <p className={`mt-2 text-sm font-medium ${gstCompliance.is_compliant !== false ? "text-emerald-400" : "text-red-400"}`}>
+            {gstCompliance.is_compliant !== false ? "Compliant" : "Non-Compliant"}
           </p>
-          <p className="mt-1 text-xs text-slate-500">{gstCompliance.summary || "HSN valid, rates match"}</p>
+          <p className="mt-1 text-xs text-slate-500">{gstCompliance.details?.hsn_valid ? "HSN valid" : ""}{gstCompliance.details?.rate_match ? ", rates match" : ""}{gstCompliance.details?.e_invoice ? ", e-invoice" : ""}</p>
         </motion.div>
         <motion.div {...fadeUp(0.4)} whileHover={{ scale: 1.03 }} className="glass-card p-6 text-center">
           <h3 className="text-sm font-medium text-slate-400">GSTIN</h3>
@@ -141,17 +146,23 @@ export default function InvoiceDetailClient({ params }: { params: { id: string }
       <motion.section {...fadeUp(0.5)} className="mt-4 glass-card p-6">
         <h3 className="text-sm font-semibold text-slate-200">Fraud Detection (5-Layer)</h3>
         <div className="mt-3 space-y-2">
-          {["Document Integrity", "Financial Consistency", "Pattern Analysis", "Entity Verification", "Cross-Reference"].map((layer, i) => {
-            const flagged = fraudFlags.some((f: any) => f.layer === layer);
+          {(fraudLayers.length > 0 ? fraudLayers : ["Document Integrity", "Financial Consistency", "Pattern Analysis", "Entity Verification", "Cross-Reference"].map((name: string) => ({ name, result: "pass", detail: "", confidence: 0 }))).map((layer: any, i: number) => {
+            const passed = layer.result === "pass";
             return (
-              <motion.div key={layer} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 + i * 0.05 }} className={`flex items-center justify-between rounded-lg border px-4 py-2 text-sm ${flagged ? "bg-red-500/5 border-red-500/10" : "bg-emerald-500/5 border-emerald-500/10"}`}>
-                <span className="text-slate-300">{layer}</span>
-                <span className={`font-medium ${flagged ? "text-red-400" : "text-emerald-400"}`}>{flagged ? "⚠️ Flag" : "✅ Pass"}</span>
+              <motion.div key={layer.name} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 + i * 0.05 }} className={`flex items-center justify-between rounded-lg border px-4 py-2 text-sm ${!passed ? "bg-red-500/5 border-red-500/10" : "bg-emerald-500/5 border-emerald-500/10"}`}>
+                <div>
+                  <span className="text-slate-300">{layer.name}</span>
+                  {layer.detail && <span className="ml-2 text-xs text-slate-500">{layer.detail}</span>}
+                </div>
+                <div className="flex items-center gap-2">
+                  {layer.confidence > 0 && <span className="text-[10px] text-slate-500">{layer.confidence}%</span>}
+                  <span className={`font-medium ${!passed ? "text-red-400" : "text-emerald-400"}`}>{!passed ? "⚠️ Flag" : "✅ Pass"}</span>
+                </div>
               </motion.div>
             );
           })}
         </div>
-        <p className="mt-3 text-sm text-slate-500">Flags: <span className={fraudFlags.length > 0 ? "text-red-400" : "text-emerald-400"}>{fraudFlags.length}</span></p>
+        <p className="mt-3 text-sm text-slate-500">Overall: <span className={fraudDetection.overall === "pass" ? "text-emerald-400" : "text-red-400"}>{fraudDetection.overall || "pass"}</span> · Confidence: <span className="text-slate-400">{fraudDetection.confidence || 0}%</span> · Flags: <span className={fraudFlags.length > 0 ? "text-red-400" : "text-emerald-400"}>{fraudFlags.length}</span></p>
       </motion.section>
 
       {/* Underwriting Decision */}
@@ -163,17 +174,71 @@ export default function InvoiceDetailClient({ params }: { params: { id: string }
             underwriting.decision === "rejected" ? "badge-rejected" : "badge-flagged"
           }`}>{(underwriting.decision || status).toUpperCase()}</span>
         </div>
-        {underwriting.reason && <p className="mt-2 text-sm text-slate-400">{underwriting.reason}</p>}
-        {underwriting.cross_validation && <p className="mt-1 text-sm text-slate-400">Cross-validation: <span className="text-emerald-400">PASSED</span></p>}
+        {underwriting.reasoning && <p className="mt-2 text-sm text-slate-400">{underwriting.reasoning}</p>}
+        {underwriting.rule_matched && <p className="mt-1 text-xs text-slate-500">Rule: {underwriting.rule_matched}</p>}
+        {underwriting.cross_validation && <p className="mt-1 text-sm text-slate-400">Cross-validation: <span className="text-emerald-400">{underwriting.cross_validation.toUpperCase()}</span></p>}
       </motion.section>
 
       {/* AI Explanation */}
-      {(invoice.risk_explanation || extracted.summary) && (
+      {(invoice.risk_assessment?.explanation || invoice.ai_explanation) && (
         <motion.section {...fadeUp(0.8)} className="mt-4 glass-card p-6">
           <h3 className="text-sm font-semibold text-slate-200">🤖 AI Risk Explanation</h3>
           <p className="mt-2 text-sm text-slate-400 leading-relaxed">
-            {invoice.risk_explanation || extracted.summary}
+            {invoice.risk_assessment?.explanation || invoice.ai_explanation}
           </p>
+        </motion.section>
+      )}
+
+      {/* Buyer Intel + Credit Score + Company Info */}
+      {(invoice.buyer_intel || invoice.credit_score || invoice.company_info) && (
+        <motion.section {...fadeUp(0.9)} className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {invoice.buyer_intel && (
+            <div className="glass-card p-5">
+              <h3 className="text-sm font-semibold text-slate-200">📊 Buyer Intel</h3>
+              <div className="mt-3 space-y-1 text-xs">
+                <p className="text-slate-400">Payment History: <span className="text-slate-200">{invoice.buyer_intel.payment_history}</span></p>
+                <p className="text-slate-400">Avg Payment Days: <span className="text-slate-200">{invoice.buyer_intel.avg_days}</span></p>
+                <p className="text-slate-400">Previous Invoices: <span className="text-slate-200">{invoice.buyer_intel.previous_count}</span></p>
+              </div>
+            </div>
+          )}
+          {invoice.credit_score && (
+            <div className="glass-card p-5">
+              <h3 className="text-sm font-semibold text-slate-200">💳 Credit Score</h3>
+              <p className="mt-3 text-3xl font-bold text-center">
+                <span className={invoice.credit_score.score >= 700 ? "text-emerald-400" : invoice.credit_score.score >= 500 ? "text-yellow-400" : "text-red-400"}>
+                  {invoice.credit_score.score}
+                </span>
+              </p>
+              <p className="mt-1 text-center text-xs text-slate-500 capitalize">{invoice.credit_score.rating}</p>
+            </div>
+          )}
+          {invoice.company_info && (
+            <div className="glass-card p-5">
+              <h3 className="text-sm font-semibold text-slate-200">🏢 Company Info</h3>
+              <div className="mt-3 space-y-1 text-xs">
+                <p className="text-slate-400">Status: <span className="text-emerald-400 capitalize">{invoice.company_info.status}</span></p>
+                <p className="text-slate-400">Incorporated: <span className="text-slate-200">{invoice.company_info.incorporated}</span></p>
+                <p className="text-slate-400">Paid-up Capital: <span className="text-slate-200">₹{Number(invoice.company_info.paid_up_capital || 0).toLocaleString("en-IN")}</span></p>
+              </div>
+            </div>
+          )}
+        </motion.section>
+      )}
+
+      {/* NFT Info */}
+      {nftData.asset_id && (
+        <motion.section {...fadeUp(1.0)} className="mt-4 glass-card p-6">
+          <h3 className="text-sm font-semibold text-slate-200">🔗 NFT (ARC-69)</h3>
+          <div className="mt-3 flex items-center gap-4">
+            <span className="badge badge-minted">ASA #{nftData.asset_id}</span>
+            <span className="text-xs text-slate-500 capitalize">Status: {nftData.status}</span>
+            {nftData.explorer_url && (
+              <a href={nftData.explorer_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300">
+                View on Pera Explorer ↗
+              </a>
+            )}
+          </div>
         </motion.section>
       )}
     </div>
