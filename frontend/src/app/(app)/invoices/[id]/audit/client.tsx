@@ -4,16 +4,17 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { DEMO_AUDIT_TRACES } from "@/lib/demo-data";
+import { useInvoiceId } from "@/hooks/useInvoiceId";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export default function AuditTrailClient({ params }: { params: { id: string } }) {
+  const invoiceId = useInvoiceId(params.id);
   const [agents, setAgents] = useState<any[]>([]);
   const [totalDuration, setTotalDuration] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getAuditTrail(params.id).then((data: any) => {
+    api.getAuditTrail(invoiceId).then((data: any) => {
       if (data.agents && Array.isArray(data.agents)) {
         setAgents(data.agents);
         setTotalDuration(data.total_duration_ms || 0);
@@ -26,20 +27,14 @@ export default function AuditTrailClient({ params }: { params: { id: string } })
       }
       setLoading(false);
     }).catch(() => {
-      // Convert demo traces to agent format
-      const invoiceSteps = DEMO_AUDIT_TRACES.filter((t: any) => (t.step_number || t.step) <= 10);
-      const uwSteps = DEMO_AUDIT_TRACES.filter((t: any) => (t.step_number || t.step) > 10);
-      const demoAgents: any[] = [];
-      if (invoiceSteps.length > 0) demoAgents.push({ name: "Invoice Processing Agent", model: "sonnet-4.6", steps: invoiceSteps });
-      if (uwSteps.length > 0) demoAgents.push({ name: "Underwriting Agent", model: "sonnet-4.6", steps: uwSteps });
-      setAgents(demoAgents);
+      setAgents([]);
       setLoading(false);
     });
-  }, [params.id]);
+  }, [invoiceId]);
 
   return (
     <div>
-      <Link href={`/invoices/${params.id}`} className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+      <Link href={`/invoices/${invoiceId}`} className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
         ← Back to Invoice
       </Link>
 

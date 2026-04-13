@@ -11,6 +11,12 @@ Usage:
 
 from strands.multiagent.swarm import Swarm
 
+from app.modules.agents.config import (
+    SWARM_EXECUTION_TIMEOUT,
+    SWARM_MAX_HANDOFFS,
+    SWARM_MAX_ITERATIONS,
+    SWARM_NODE_TIMEOUT,
+)
 from app.modules.agents.invoice_agent import create_invoice_processing_agent
 from app.modules.agents.underwriting_agent import create_underwriting_agent
 
@@ -26,8 +32,8 @@ def create_invoice_swarm() -> Swarm:
     return Swarm(
         nodes=[invoice_agent, underwriting_agent],
         entry_point=invoice_agent,
-        max_handoffs=5,
-        max_iterations=10,
-        execution_timeout=120.0,  # 2 minutes total (hackathon target)
-        node_timeout=60.0,  # 1 minute per agent
+        max_handoffs=SWARM_MAX_HANDOFFS,
+        max_iterations=SWARM_MAX_ITERATIONS,
+        execution_timeout=SWARM_EXECUTION_TIMEOUT,
+        node_timeout=SWARM_NODE_TIMEOUT,
     )

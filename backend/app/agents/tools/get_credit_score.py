@@ -14,23 +14,17 @@ Demo mode: Always returns score=750, rating="good" regardless of GSTIN.
 
 Dependencies:
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE)
 """
 
 import logging
 
 from strands import tool
 
-from app.config import settings
-
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-
-# Demo result returned when DEMO_MODE is active
-_DEMO_RESULT: dict = {"score": 750, "rating": "good"}
 
 # Mapping of GSTIN 2-char state code prefix -> (score, rating)
 _PREFIX_MAP: dict[str, tuple[int, str]] = {
@@ -49,26 +43,8 @@ _DEFAULT_RESULT: dict = {"score": 650, "rating": "average"}
 # ---------------------------------------------------------------------------
 
 
-def _get_credit_score_impl(buyer_gstin: str, _demo: bool = None) -> dict:
-    """Core logic for credit score lookup.
-
-    Args:
-        buyer_gstin: 15-character GSTIN of the invoice buyer.
-        _demo: Override for DEMO_MODE. None = use settings.DEMO_MODE,
-               True = force demo mode, False = force real (mock) logic.
-
-    Returns:
-        {"score": int, "rating": str}
-    """
-    use_demo = settings.DEMO_MODE if _demo is None else _demo
-
-    if use_demo:
-        logger.info(
-            "DEMO_MODE: returning pre-computed credit score for buyer GSTIN %s",
-            buyer_gstin,
-        )
-        return dict(_DEMO_RESULT)
-
+def _get_credit_score_impl(buyer_gstin: str) -> dict:
+    """Core logic for credit score lookup."""
     # Guard: GSTIN must be at least 2 chars for a valid state code prefix
     if len(buyer_gstin) < 2:
         logger.info(
@@ -102,7 +78,6 @@ def _get_credit_score_tool(buyer_gstin: str) -> dict:
     """Look up the mock CIBIL credit score for a buyer identified by their GSTIN.
 
     Returns a score and rating derived from the GSTIN state code prefix.
-    In DEMO_MODE, always returns a fixed good score without any API calls.
 
     Args:
         buyer_gstin: 15-character GSTIN of the invoice buyer.
@@ -126,8 +101,8 @@ class _CreditScoreTool:
     transparently.
     """
 
-    def __call__(self, buyer_gstin: str, _demo: bool = None) -> dict:
-        return _get_credit_score_impl(buyer_gstin, _demo=_demo)
+    def __call__(self, buyer_gstin: str) -> dict:
+        return _get_credit_score_impl(buyer_gstin)
 
     # Forward Strands tool protocol attributes to the decorated tool
     def __getattr__(self, item):

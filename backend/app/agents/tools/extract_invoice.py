@@ -2,12 +2,11 @@
 
 Primary: Amazon Textract (synchronous, 5MB limit) + Claude parsing.
 Fallback: Claude vision via Bedrock (if Textract fails).
-Demo mode: Returns pre-computed data with no API calls.
 
 Dependencies:
     - boto3 (S3, Textract, Bedrock Runtime)
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE, AWS_REGION, S3_BUCKET_NAME)
+    - app.config.settings (AWS_REGION, S3_BUCKET_NAME)
     - app.modules.agents.config (BEDROCK_REGION, SONNET_MODEL_ID)
 """
 
@@ -26,50 +25,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-
-# Pre-computed demo data matching ExtractedData schema
-DEMO_EXTRACTED_DATA: dict = {
-    "seller": {
-        "name": "Tata Steel Trading Co.",
-        "gstin": "27AABCT1234R1ZM",
-        "address": "Bombay House, Mumbai, MH 400001",
-    },
-    "buyer": {
-        "name": "Reliance Infrastructure Ltd",
-        "gstin": "07AABCR5678R1ZN",
-        "address": "3 North Avenue, New Delhi, DL 110001",
-    },
-    "invoice_number": "INV-2026-0342",
-    "invoice_date": "2026-03-01",
-    "due_date": "2026-04-01",
-    "subtotal": 425000.00,
-    "tax_amount": 76500.00,
-    "tax_rate": 18.0,
-    "total_amount": 501500.00,
-    "line_items": [
-        {
-            "description": "TMT Steel Bars Fe-500D",
-            "hsn_code": "7214",
-            "quantity": 500,
-            "rate": 450.0,
-            "amount": 225000.0,
-        },
-        {
-            "description": "MS Angle 50x50x6mm",
-            "hsn_code": "7216",
-            "quantity": 200,
-            "rate": 600.0,
-            "amount": 120000.0,
-        },
-        {
-            "description": "GI Binding Wire 18 gauge",
-            "hsn_code": "7217",
-            "quantity": 100,
-            "rate": 800.0,
-            "amount": 80000.0,
-        },
-    ],
-}
 
 # System prompt for Claude to parse raw OCR text into structured invoice JSON
 _PARSE_SYSTEM_PROMPT = """You are an invoice data extraction specialist for Indian GST invoices.
@@ -265,19 +220,11 @@ def extract_invoice(s3_file_key: str, bucket_name: str) -> dict:
     """Extract structured data from a PDF invoice stored in S3.
 
     Uses Amazon Textract (primary) with Claude vision fallback.
-    In DEMO_MODE, returns pre-computed data without any API calls.
 
     Args:
         s3_file_key: The S3 object key for the uploaded invoice PDF.
         bucket_name: The S3 bucket name where the invoice is stored.
     """
-    # Demo mode: return pre-computed data, no AWS calls
-    if settings.DEMO_MODE:
-        logger.info(
-            "DEMO_MODE: returning pre-computed extracted data for %s", s3_file_key
-        )
-        return dict(DEMO_EXTRACTED_DATA)
-
     logger.info("Extracting invoice data from s3://%s/%s", bucket_name, s3_file_key)
 
     # Step 1: Download document from S3

@@ -17,32 +17,17 @@ Demo mode: returns all-active, verified=True regardless of GSTINs.
 
 Dependencies:
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE)
 """
 
 import logging
 
 from strands import tool
 
-from app.config import settings
-
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-
-# Pre-computed demo result -- returned when DEMO_MODE=True
-_DEMO_RESULT: dict = {
-    "verified": True,
-    "status": "active",
-    "details": {
-        "seller_gstin_active": True,
-        "buyer_gstin_active": True,
-        "seller_on_blocklist": False,
-        "buyer_on_blocklist": False,
-    },
-}
 
 # State code prefixes that are INACTIVE (cannot transact)
 _INACTIVE_PREFIXES: frozenset[str] = frozenset({"07"})  # Delhi (mock rule)
@@ -77,26 +62,9 @@ def _gstin_status(gstin: str) -> tuple[bool, bool]:
 
 
 def _resolve_gstin_verification(
-    seller_gstin: str, buyer_gstin: str, use_demo: bool
+    seller_gstin: str, buyer_gstin: str
 ) -> dict:
-    """Core GSTIN verification logic, separated from the Strands decorator.
-
-    Args:
-        seller_gstin: 15-character GSTIN of the seller.
-        buyer_gstin: 15-character GSTIN of the buyer.
-        use_demo: Whether to return the demo (pre-computed) result.
-
-    Returns:
-        Dict with verified (bool), status (str), details (dict).
-    """
-    if use_demo:
-        logger.info("DEMO_MODE: returning pre-computed GSTIN verification result")
-        return {
-            "verified": _DEMO_RESULT["verified"],
-            "status": _DEMO_RESULT["status"],
-            "details": dict(_DEMO_RESULT["details"]),
-        }
-
+    """Core GSTIN verification logic, separated from the Strands decorator."""
     seller_active, seller_blocklisted = _gstin_status(seller_gstin)
     buyer_active, buyer_blocklisted = _gstin_status(buyer_gstin)
 
@@ -139,34 +107,26 @@ def _verify_gstn_tool(seller_gstin: str, buyer_gstin: str) -> dict:
     """Verify GSTIN registration status for both seller and buyer.
 
     Uses a deterministic mock lookup keyed on the first 2 characters (state code)
-    of each GSTIN. In DEMO_MODE, always returns all-active, verified=True.
+    of each GSTIN.
 
     Args:
         seller_gstin: The 15-character GST Identification Number of the seller.
         buyer_gstin: The 15-character GST Identification Number of the buyer.
     """
-    return _resolve_gstin_verification(
-        seller_gstin, buyer_gstin, use_demo=settings.DEMO_MODE
-    )
+    return _resolve_gstin_verification(seller_gstin, buyer_gstin)
 
 
 # ---------------------------------------------------------------------------
 # Public callable (used by tests and by agent tool list)
-# Accepts an optional _demo override so tests can force real/demo paths
-# without changing global settings.
 # ---------------------------------------------------------------------------
 
 
-def verify_gstn(seller_gstin: str, buyer_gstin: str, _demo: bool = None) -> dict:
+def verify_gstn(seller_gstin: str, buyer_gstin: str) -> dict:
     """Verify GSTIN registration status for both seller and buyer.
-
-    Wraps _verify_gstn_tool with a _demo override for testability.
 
     Args:
         seller_gstin: The 15-character GST Identification Number of the seller.
         buyer_gstin: The 15-character GST Identification Number of the buyer.
-        _demo: Override for DEMO_MODE. True forces demo path, False forces real
-               logic, None defers to settings.DEMO_MODE.
 
     Returns:
         Dict with keys:
@@ -174,5 +134,4 @@ def verify_gstn(seller_gstin: str, buyer_gstin: str, _demo: bool = None) -> dict
             status (str): "active" if verified, else "inactive".
             details (dict): per-GSTIN active and blocklist flags.
     """
-    use_demo = settings.DEMO_MODE if _demo is None else _demo
-    return _resolve_gstin_verification(seller_gstin, buyer_gstin, use_demo=use_demo)
+    return _resolve_gstin_verification(seller_gstin, buyer_gstin)

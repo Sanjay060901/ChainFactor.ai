@@ -8,18 +8,14 @@ Logic:
             for Rs{total_amount}. Risk: {risk.level} ({risk.score}/100)."
 - highlights: notable findings (fraud warnings, GST issues, credit concerns, etc.)
 - recommendation: "approve" (low/medium), "review" (high), "reject" (critical)
-- DEMO_MODE: returns pre-computed summary
 
 Dependencies:
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE)
 """
 
 import logging
 
 from strands import tool
-
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +23,6 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-_DEMO_RESULT: dict = {
-    "summary": (
-        "Invoice INV-2026-001 from Acme Technologies Pvt Ltd to TechBuild Solutions "
-        "for Rs613600.0. Risk: low (15/100)."
-    ),
-    "highlights": [],
-    "recommendation": "approve",
-}
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -138,29 +126,8 @@ def _resolve_summary(
     credit_score: dict,
     company_info: dict,
     risk_assessment: dict,
-    use_demo: bool,
 ) -> dict:
-    """Core summary generation logic, separated from the Strands decorator.
-
-    Args:
-        extracted_data: Structured invoice data from extract_invoice tool.
-        validation_result: Output from validate_fields tool.
-        fraud_result: Output from check_fraud tool.
-        gst_compliance: Output from validate_gst_compliance tool.
-        gstin_verification: Output from verify_gstn tool.
-        buyer_intel: Output from get_buyer_intel tool.
-        credit_score: Output from get_credit_score tool.
-        company_info: Output from get_company_info tool.
-        risk_assessment: Output from calculate_risk tool.
-        use_demo: Whether to return the demo (pre-computed) result.
-
-    Returns:
-        Dict with keys: summary (str), highlights (list[str]), recommendation (str).
-    """
-    if use_demo:
-        logger.info("DEMO_MODE: returning pre-computed summary result")
-        return dict(_DEMO_RESULT)
-
+    """Core summary generation logic, separated from the Strands decorator."""
     invoice_number = (extracted_data or {}).get("invoice_number", "<unknown>")
     logger.info("Generating summary for invoice %s", invoice_number)
 
@@ -233,14 +200,11 @@ def _generate_summary_tool(
         credit_score,
         company_info,
         risk_assessment,
-        use_demo=settings.DEMO_MODE,
     )
 
 
 # ---------------------------------------------------------------------------
 # Public callable (used by tests and by agent tool list)
-# Accepts an optional _demo override so tests can force real/demo paths
-# without changing global settings.
 # ---------------------------------------------------------------------------
 
 
@@ -254,11 +218,8 @@ def generate_summary(
     credit_score: dict,
     company_info: dict,
     risk_assessment: dict,
-    _demo: bool = None,
 ) -> dict:
     """Generate a human-readable summary of the invoice processing results.
-
-    Wraps _generate_summary_tool with a _demo override for testability.
 
     Args:
         extracted_data: Structured invoice dict from extract_invoice tool.
@@ -270,13 +231,10 @@ def generate_summary(
         credit_score: Credit score dict from get_credit_score tool.
         company_info: Company information dict from get_company_info tool.
         risk_assessment: Risk assessment dict from calculate_risk tool.
-        _demo: Override for DEMO_MODE. True forces demo path, False forces real
-               logic, None defers to settings.DEMO_MODE.
 
     Returns:
         Dict with keys: summary (str), highlights (list[str]), recommendation (str).
     """
-    use_demo = settings.DEMO_MODE if _demo is None else _demo
     return _resolve_summary(
         extracted_data,
         validation_result,
@@ -287,5 +245,4 @@ def generate_summary(
         credit_score,
         company_info,
         risk_assessment,
-        use_demo=use_demo,
     )

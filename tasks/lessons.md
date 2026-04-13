@@ -66,6 +66,8 @@
 - `handoff_to_agent` is auto-injected as a reserved tool name -- do not use it for custom tools
 - `@tool` decorator does NOT support `pydantic.Field` in `Annotated` -- use docstrings for parameter descriptions
 - Default model is Bedrock Sonnet in us-west-2 if not specified -- always explicitly set model_id
+- **v0.1.9 breaking change:** `strands.multiagent.swarm` module was REMOVED. The `multiagent` package now only contains `a2a` (Agent-to-Agent protocol). Need to find new Swarm API or use alternative orchestration pattern for Phase 2. Also requires `a2a-sdk` as dependency.
+- **Rule:** Pin strands-agents version AND check import paths after any upgrade. The SDK is pre-1.0 and restructures frequently.
 
 ### API Gateway WebSocket 29s hard timeout
 - **Context:** In a previous project, API Gateway WebSocket had a 29-second hard idle timeout that caused issues

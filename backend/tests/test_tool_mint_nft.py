@@ -1,9 +1,7 @@
 """TDD tests for Feature 4.11: mint_nft tool.
 
 Tests ARC-69 NFT minting on Algorand testnet.
-
-In DEMO_MODE: returns mock result (no algosdk calls).
-In real mode: algosdk calls are mocked via unittest.mock to avoid testnet side effects.
+All tests mock _create_asa to avoid real algosdk/testnet calls.
 
 Return shape:
     {"asset_id": int, "txn_id": str, "explorer_url": str, "metadata": dict}
@@ -21,6 +19,11 @@ from app.agents.tools.mint_nft import mint_nft
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+_MOCK_ASA = patch(
+    "app.agents.tools.mint_nft._create_asa",
+    return_value=(123456789, "MOCK_TXN_ABC123"),
+)
 
 
 def _extracted_data() -> dict:
@@ -45,152 +48,54 @@ def _risk_assessment() -> dict:
 class TestMintNftReturnShape:
     """Result must contain asset_id, txn_id, explorer_url, and metadata."""
 
-    def test_return_keys_present_demo(self):
+    @_MOCK_ASA
+    def test_return_keys_present(self, _mock):
         result = mint_nft(
             invoice_id="inv-123",
             extracted_data=_extracted_data(),
             risk_assessment=_risk_assessment(),
-            _demo=True,
         )
         assert "asset_id" in result
         assert "txn_id" in result
         assert "explorer_url" in result
         assert "metadata" in result
 
-    def test_asset_id_is_int_demo(self):
+    @_MOCK_ASA
+    def test_asset_id_is_int(self, _mock):
         result = mint_nft(
             invoice_id="inv-123",
             extracted_data=_extracted_data(),
             risk_assessment=_risk_assessment(),
-            _demo=True,
         )
         assert isinstance(result["asset_id"], int)
 
-    def test_txn_id_is_str_demo(self):
+    @_MOCK_ASA
+    def test_txn_id_is_str(self, _mock):
         result = mint_nft(
             invoice_id="inv-123",
             extracted_data=_extracted_data(),
             risk_assessment=_risk_assessment(),
-            _demo=True,
         )
         assert isinstance(result["txn_id"], str)
         assert len(result["txn_id"]) > 0
 
-    def test_explorer_url_is_str_demo(self):
+    @_MOCK_ASA
+    def test_explorer_url_is_str(self, _mock):
         result = mint_nft(
             invoice_id="inv-123",
             extracted_data=_extracted_data(),
             risk_assessment=_risk_assessment(),
-            _demo=True,
         )
         assert isinstance(result["explorer_url"], str)
 
-    def test_metadata_is_dict_demo(self):
+    @_MOCK_ASA
+    def test_metadata_is_dict(self, _mock):
         result = mint_nft(
             invoice_id="inv-123",
             extracted_data=_extracted_data(),
             risk_assessment=_risk_assessment(),
-            _demo=True,
         )
         assert isinstance(result["metadata"], dict)
-
-
-# ---------------------------------------------------------------------------
-# Tests: DEMO_MODE values
-# ---------------------------------------------------------------------------
-
-
-class TestMintNftDemoMode:
-    """Demo mode returns the correct mock values."""
-
-    def test_demo_asset_id(self):
-        result = mint_nft(
-            invoice_id="inv-123",
-            extracted_data=_extracted_data(),
-            risk_assessment=_risk_assessment(),
-            _demo=True,
-        )
-        assert result["asset_id"] == 123456789
-
-    def test_demo_txn_id_starts_with_demo(self):
-        result = mint_nft(
-            invoice_id="inv-123",
-            extracted_data=_extracted_data(),
-            risk_assessment=_risk_assessment(),
-            _demo=True,
-        )
-        assert result["txn_id"].startswith("DEMO_TXN_")
-
-    def test_demo_explorer_url_contains_asset_id(self):
-        result = mint_nft(
-            invoice_id="inv-123",
-            extracted_data=_extracted_data(),
-            risk_assessment=_risk_assessment(),
-            _demo=True,
-        )
-        assert "123456789" in result["explorer_url"]
-        assert "perawallet" in result["explorer_url"]
-
-    def test_demo_explorer_url_format(self):
-        """Explorer URL must match the Pera testnet pattern."""
-        result = mint_nft(
-            invoice_id="inv-123",
-            extracted_data=_extracted_data(),
-            risk_assessment=_risk_assessment(),
-            _demo=True,
-        )
-        assert (
-            result["explorer_url"]
-            == "https://testnet.explorer.perawallet.app/asset/123456789/"
-        )
-
-    def test_demo_metadata_arc69_standard(self):
-        result = mint_nft(
-            invoice_id="inv-123",
-            extracted_data=_extracted_data(),
-            risk_assessment=_risk_assessment(),
-            _demo=True,
-        )
-        assert result["metadata"]["standard"] == "arc69"
-
-    def test_demo_metadata_has_description(self):
-        result = mint_nft(
-            invoice_id="inv-123",
-            extracted_data=_extracted_data(),
-            risk_assessment=_risk_assessment(),
-            _demo=True,
-        )
-        assert "description" in result["metadata"]
-        assert isinstance(result["metadata"]["description"], str)
-
-    def test_demo_metadata_properties_present(self):
-        result = mint_nft(
-            invoice_id="inv-123",
-            extracted_data=_extracted_data(),
-            risk_assessment=_risk_assessment(),
-            _demo=True,
-        )
-        props = result["metadata"]["properties"]
-        assert "invoice_number" in props
-        assert "seller" in props
-        assert "buyer" in props
-        assert "amount" in props
-        assert "risk_score" in props
-        assert "risk_level" in props
-
-    def test_demo_metadata_properties_values(self):
-        """Properties should match the input extracted_data and risk_assessment."""
-        result = mint_nft(
-            invoice_id="inv-123",
-            extracted_data=_extracted_data(),
-            risk_assessment=_risk_assessment(),
-            _demo=True,
-        )
-        props = result["metadata"]["properties"]
-        assert props["invoice_number"] == "INV-2026-001"
-        assert props["risk_score"] == 15
-        assert props["risk_level"] == "low"
-        assert props["amount"] == 11800.0
 
 
 # ---------------------------------------------------------------------------
@@ -222,7 +127,7 @@ class TestMintNftRealMode:
         return mock_algod, txn_id, asset_id
 
     def test_real_mode_returns_correct_shape(self):
-        """Real mode result has same keys as demo mode."""
+        """Result has same keys as expected shape."""
         _mock_algod, txn_id, asset_id = self._make_mock_algod()
 
         # Patch _create_asa (the algosdk boundary) -- algosdk is a local import
@@ -234,7 +139,6 @@ class TestMintNftRealMode:
                 invoice_id="inv-real-001",
                 extracted_data=_extracted_data(),
                 risk_assessment=_risk_assessment(),
-                _demo=False,
             )
 
         assert "asset_id" in result
@@ -251,7 +155,6 @@ class TestMintNftRealMode:
                 invoice_id="inv-real-002",
                 extracted_data=_extracted_data(),
                 risk_assessment=_risk_assessment(),
-                _demo=False,
             )
 
         assert "987654321" in result["explorer_url"]
@@ -267,7 +170,6 @@ class TestMintNftRealMode:
                 invoice_id="inv-real-003",
                 extracted_data=_extracted_data(),
                 risk_assessment=_risk_assessment(),
-                _demo=False,
             )
 
         assert result["metadata"]["standard"] == "arc69"
@@ -283,7 +185,6 @@ class TestMintNftRealMode:
                 invoice_id="inv-real-004",
                 extracted_data=_extracted_data(),
                 risk_assessment=_risk_assessment(),
-                _demo=False,
             )
 
         assert result["asset_id"] == expected_asset_id
@@ -359,29 +260,29 @@ class TestBuildArc69Metadata:
 class TestExplorerUrl:
     """Explorer URL must always use Pera testnet and end with /."""
 
-    def test_demo_url_ends_with_slash(self):
+    @_MOCK_ASA
+    def test_url_ends_with_slash(self, _mock):
         result = mint_nft(
             invoice_id="inv-url-test",
             extracted_data=_extracted_data(),
             risk_assessment=_risk_assessment(),
-            _demo=True,
         )
         assert result["explorer_url"].endswith("/")
 
-    def test_demo_url_uses_testnet_pera(self):
+    @_MOCK_ASA
+    def test_url_uses_testnet_pera(self, _mock):
         result = mint_nft(
             invoice_id="inv-url-test",
             extracted_data=_extracted_data(),
             risk_assessment=_risk_assessment(),
-            _demo=True,
         )
         assert "testnet.explorer.perawallet.app" in result["explorer_url"]
 
-    def test_demo_url_path_contains_asset(self):
+    @_MOCK_ASA
+    def test_url_path_contains_asset(self, _mock):
         result = mint_nft(
             invoice_id="inv-url-test",
             extracted_data=_extracted_data(),
             risk_assessment=_risk_assessment(),
-            _demo=True,
         )
         assert "/asset/" in result["explorer_url"]

@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { DEMO_DASHBOARD, DEMO_INVOICES, DEMO_NL_RESPONSES } from "@/lib/demo-data";
 
 interface DashboardData {
   total_value: number;
@@ -60,10 +59,10 @@ export default function DashboardPage() {
   const [nlLoading, setNlLoading] = useState(false);
 
   useEffect(() => {
-    api.dashboardSummary().then(setData).catch(() => setData(DEMO_DASHBOARD));
+    api.dashboardSummary().then(setData).catch(() => setData(null));
     api.listInvoices({ limit: 5, sort: "-created_at" })
       .then((res) => setInvoices(res.invoices as unknown as RecentInvoice[]))
-      .catch(() => setInvoices(DEMO_INVOICES.slice(0, 5) as unknown as RecentInvoice[]));
+      .catch(() => setInvoices([]));
   }, []);
 
   async function handleNlQuery() {
@@ -74,14 +73,7 @@ export default function DashboardPage() {
       const res = await api.nlQuery(nlQuery);
       setNlAnswer(res.answer);
     } catch {
-      const q = nlQuery.toLowerCase();
-      if (q.includes("risk") || q.includes("high") || q.includes("flag")) {
-        setNlAnswer(DEMO_NL_RESPONSES.risk);
-      } else if (q.includes("approved") || q.includes("approve")) {
-        setNlAnswer(DEMO_NL_RESPONSES.approved);
-      } else {
-        setNlAnswer(DEMO_NL_RESPONSES.default);
-      }
+      setNlAnswer("Unable to process your query. Please try again later.");
     }
     setNlLoading(false);
   }

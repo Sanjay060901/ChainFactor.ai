@@ -109,7 +109,6 @@ class TestGenerateSummaryReturnShape:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_low_risk(),
-            _demo=False,
         )
         assert "summary" in result
         assert "highlights" in result
@@ -126,7 +125,6 @@ class TestGenerateSummaryReturnShape:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_low_risk(),
-            _demo=False,
         )
         assert isinstance(result["summary"], str)
         assert len(result["summary"]) > 0
@@ -142,7 +140,6 @@ class TestGenerateSummaryReturnShape:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_low_risk(),
-            _demo=False,
         )
         assert isinstance(result["highlights"], list)
 
@@ -157,7 +154,6 @@ class TestGenerateSummaryReturnShape:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_low_risk(),
-            _demo=False,
         )
         assert isinstance(result["recommendation"], str)
 
@@ -181,7 +177,6 @@ class TestGenerateSummaryContent:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_low_risk(),
-            _demo=False,
         )
         assert "INV-2026-001" in result["summary"]
 
@@ -196,7 +191,6 @@ class TestGenerateSummaryContent:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_low_risk(),
-            _demo=False,
         )
         assert "Acme Pvt Ltd" in result["summary"]
 
@@ -211,7 +205,6 @@ class TestGenerateSummaryContent:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_low_risk(),
-            _demo=False,
         )
         assert "Beta Corp" in result["summary"]
 
@@ -226,7 +219,6 @@ class TestGenerateSummaryContent:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_low_risk(),
-            _demo=False,
         )
         assert "low" in result["summary"].lower()
 
@@ -241,7 +233,6 @@ class TestGenerateSummaryContent:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_low_risk(),
-            _demo=False,
         )
         # "15/100" or "15" must appear in summary
         assert "15" in result["summary"]
@@ -266,7 +257,6 @@ class TestGenerateSummaryRecommendation:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_low_risk(),
-            _demo=False,
         )
         assert result["recommendation"] == "approve"
 
@@ -282,7 +272,6 @@ class TestGenerateSummaryRecommendation:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=medium_risk,
-            _demo=False,
         )
         assert result["recommendation"] == "approve"
 
@@ -297,7 +286,6 @@ class TestGenerateSummaryRecommendation:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_high_risk(),
-            _demo=False,
         )
         assert result["recommendation"] == "review"
 
@@ -312,7 +300,6 @@ class TestGenerateSummaryRecommendation:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_critical_risk(),
-            _demo=False,
         )
         assert result["recommendation"] == "reject"
 
@@ -337,7 +324,6 @@ class TestGenerateSummaryHighlights:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_low_risk(),
-            _demo=False,
         )
         # highlights is a list (may be empty for clean invoices)
         assert isinstance(result["highlights"], list)
@@ -360,7 +346,6 @@ class TestGenerateSummaryHighlights:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_high_risk(),
-            _demo=False,
         )
         highlights_text = " ".join(result["highlights"]).lower()
         assert len(result["highlights"]) > 0
@@ -382,7 +367,6 @@ class TestGenerateSummaryHighlights:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_high_risk(),
-            _demo=False,
         )
         assert any(
             "gst" in h.lower() or "complian" in h.lower() for h in result["highlights"]
@@ -401,7 +385,6 @@ class TestGenerateSummaryHighlights:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_high_risk(),
-            _demo=False,
         )
         assert any(
             "slow" in h.lower() or "payment" in h.lower() or "payer" in h.lower()
@@ -421,7 +404,6 @@ class TestGenerateSummaryHighlights:
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
             risk_assessment=_high_risk(),
-            _demo=False,
         )
         assert any(
             "valid" in h.lower() or "error" in h.lower() or "field" in h.lower()
@@ -429,60 +411,4 @@ class TestGenerateSummaryHighlights:
         )
 
 
-# ---------------------------------------------------------------------------
-# Tests: DEMO_MODE
-# ---------------------------------------------------------------------------
 
-
-class TestGenerateSummaryDemoMode:
-    """DEMO_MODE returns a pre-computed summary."""
-
-    def test_demo_returns_full_shape(self):
-        result = generate_summary(
-            extracted_data=_clean_extracted(),
-            validation_result=_clean_validation(),
-            fraud_result=_clean_fraud(),
-            gst_compliance=_clean_gst(),
-            gstin_verification=_clean_gstin(),
-            buyer_intel=_clean_buyer_intel(),
-            credit_score=_clean_credit_score(),
-            company_info=_clean_company_info(),
-            risk_assessment=_low_risk(),
-            _demo=True,
-        )
-        assert "summary" in result
-        assert "highlights" in result
-        assert "recommendation" in result
-
-    def test_demo_recommendation_approve(self):
-        """Pre-computed demo invoice is low risk -> approve."""
-        result = generate_summary(
-            extracted_data=_clean_extracted(),
-            validation_result=_clean_validation(),
-            fraud_result=_clean_fraud(),
-            gst_compliance=_clean_gst(),
-            gstin_verification=_clean_gstin(),
-            buyer_intel=_clean_buyer_intel(),
-            credit_score=_clean_credit_score(),
-            company_info=_clean_company_info(),
-            risk_assessment=_low_risk(),
-            _demo=True,
-        )
-        assert result["recommendation"] == "approve"
-
-    def test_demo_ignores_critical_risk_input(self):
-        """Demo mode returns pre-computed result, ignores critical risk_assessment."""
-        result = generate_summary(
-            extracted_data=_clean_extracted(),
-            validation_result=_clean_validation(),
-            fraud_result=_clean_fraud(),
-            gst_compliance=_clean_gst(),
-            gstin_verification=_clean_gstin(),
-            buyer_intel=_clean_buyer_intel(),
-            credit_score=_clean_credit_score(),
-            company_info=_clean_company_info(),
-            risk_assessment=_critical_risk(),
-            _demo=True,
-        )
-        # Demo always returns approve pre-computed; must NOT be "reject"
-        assert result["recommendation"] == "approve"

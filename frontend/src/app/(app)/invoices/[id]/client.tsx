@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { getDemoInvoiceDetail } from "@/lib/demo-data";
+import { useInvoiceId } from "@/hooks/useInvoiceId";
+import AIExplainabilityPanel from "@/components/invoice/AIExplainabilityPanel";
 
 const fadeUp = (delay: number) => ({
   initial: { opacity: 0, y: 20 },
@@ -14,18 +16,47 @@ const fadeUp = (delay: number) => ({
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export default function InvoiceDetailClient({ params }: { params: { id: string } }) {
+  const invoiceId = useInvoiceId(params.id);
+  const router = useRouter();
   const [invoice, setInvoice] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
-    api.getInvoice(params.id).then((data) => {
-      setInvoice(data as Record<string, any>);
-      setLoading(false);
-    }).catch(() => {
-      setInvoice(getDemoInvoiceDetail(params.id));
-      setLoading(false);
+    // Skip fetching with the static placeholder ID
+    if (!invoiceId || invoiceId === "placeholder") return;
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    api.getInvoice(invoiceId).then((data) => {
+      if (!cancelled) {
+        setInvoice(data as Record<string, any>);
+        setLoading(false);
+      }
+    }).catch((err) => {
+      if (!cancelled) {
+        setError(err?.message || "Failed to load invoice");
+        setInvoice(null);
+        setLoading(false);
+      }
     });
-  }, [params.id]);
+
+    return () => { cancelled = true; };
+  }, [invoiceId]);
+
+  async function handleDelete() {
+    if (!invoiceId || !confirm("Delete this invoice? This cannot be undone.")) return;
+    setDeleteLoading(true);
+    try {
+      await api.deleteInvoice(invoiceId);
+      router.push("/invoices");
+    } catch {
+      setDeleteLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -40,7 +71,7 @@ export default function InvoiceDetailClient({ params }: { params: { id: string }
     return (
       <div className="py-24 text-center">
         <p className="text-3xl">📄</p>
-        <p className="mt-2 text-slate-400">Invoice not found</p>
+        <p className="mt-2 text-slate-400">{error || "Invoice not found"}</p>
         <Link href="/invoices" className="mt-3 inline-block text-sm text-blue-400">← Back to Invoices</Link>
       </div>
     );
@@ -81,17 +112,27 @@ export default function InvoiceDetailClient({ params }: { params: { id: string }
 
       <motion.div {...fadeUp(0)} className="mt-4 flex items-center justify-between">
         <div>
-          <h1 className="section-title">Invoice {extracted.invoice_number || invoice.invoice_number || params.id}</h1>
+          <h1 className="section-title">Invoice {extracted.invoice_number || invoice.invoice_number || invoiceId}</h1>
           <div className="mt-2 flex items-center gap-3">
             <span className={`badge badge-${status}`}>{status === "approved" ? "✅" : ""} {status.charAt(0).toUpperCase() + status.slice(1)}</span>
             {assetId && <span className="badge badge-minted">NFT: ASA #{assetId}</span>}
           </div>
         </div>
         <div className="flex gap-3">
-          {(status === "approved" || status === "minted") && (
-            <Link href={`/invoices/${params.id}/claim`} className="btn-glow px-4 py-2 text-sm">Claim NFT</Link>
+          {status === "uploaded" && (
+            <button onClick={() => router.push(`/invoices/${invoiceId}/processing`)} className="btn-glow px-4 py-2 text-sm">🤖 Process Invoice</button>
           )}
-          <Link href={`/invoices/${params.id}/audit`} className="btn-outline-glow px-4 py-2 text-sm">Audit Trail</Link>
+          {(status === "approved" || status === "minted") && (
+            <Link href={`/invoices/${invoiceId}/claim`} className="btn-glow px-4 py-2 text-sm">Claim NFT</Link>
+          )}
+          <Link href={`/invoices/${invoiceId}/audit`} className="btn-outline-glow px-4 py-2 text-sm">Audit Trail</Link>
+          <button
+            onClick={handleDelete}
+            disabled={deleteLoading}
+            className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+          >
+            {deleteLoading ? "Deleting…" : "🗑 Delete"}
+          </button>
         </div>
       </motion.div>
 
@@ -188,6 +229,19 @@ export default function InvoiceDetailClient({ params }: { params: { id: string }
           </p>
         </motion.section>
       )}
+
+      {/* AI Explainability Deep-Dive */}
+      <AIExplainabilityPanel
+        riskScore={riskScore}
+        fraudDetection={fraudDetection}
+        gstCompliance={gstCompliance}
+        gstnVerification={gstnVerification}
+        buyerIntel={invoice.buyer_intel}
+        creditScore={invoice.credit_score}
+        companyInfo={invoice.company_info}
+        underwriting={underwriting}
+        delay={0.85}
+      />
 
       {/* Buyer Intel + Credit Score + Company Info */}
       {(invoice.buyer_intel || invoice.credit_score || invoice.company_info) && (

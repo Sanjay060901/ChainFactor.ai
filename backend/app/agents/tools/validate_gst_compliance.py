@@ -10,15 +10,12 @@ Demo mode: Returns pre-computed compliant result with no computation.
 
 Dependencies:
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE)
 """
 
 import logging
 from typing import Optional
 
 from strands import tool
-
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -37,16 +34,6 @@ _HSN_RATE_MAP: list[tuple[str, float]] = [
     ("1006", 5.0),  # Rice
     ("0201", 0.0),  # Meat (exempt)
 ]
-
-# Pre-computed demo result
-_DEMO_RESULT: dict = {
-    "is_compliant": True,
-    "details": {
-        "hsn_valid": True,
-        "rate_match": True,
-        "tax_type_correct": True,
-    },
-}
 
 
 # ---------------------------------------------------------------------------
@@ -210,17 +197,11 @@ def validate_gst_compliance(extracted_data: dict) -> dict:
       3. Tax type (IGST vs CGST+SGST) is correct for the transaction type.
       4. E-invoice requirement based on seller annual turnover (>= 5 crore).
 
-    In DEMO_MODE, skips all computation and returns a pre-computed compliant result.
-
     Args:
         extracted_data: Structured invoice data dict produced by extract_invoice tool.
             Expected keys: seller (with gstin), buyer (with gstin), line_items,
             tax_rate, tax_type (optional), seller_turnover (optional).
     """
-    if settings.DEMO_MODE:
-        logger.info("DEMO_MODE: returning pre-computed GST compliance result")
-        return dict(_DEMO_RESULT)
-
     logger.info(
         "Validating GST compliance for invoice: %s",
         extracted_data.get("invoice_number"),

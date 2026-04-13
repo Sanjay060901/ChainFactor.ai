@@ -215,7 +215,6 @@ async def _execute_step(step_name: str, **context: Any) -> dict:
     # ------------------------------------------------------------------
     if step_name == "cross_validate_outputs":
         from app.agents.tools.cross_validate_outputs import _resolve_cross_validate
-        from app.config import settings
 
         return _resolve_cross_validate(
             extracted_data=context.get("extracted_data", {}),
@@ -227,7 +226,6 @@ async def _execute_step(step_name: str, **context: Any) -> dict:
             credit_score=context.get("credit_score", {}),
             company_info=context.get("company_info", {}),
             risk_assessment=context.get("risk_assessment", {}),
-            use_demo=settings.DEMO_MODE,
         )
 
     if step_name == "underwriting_decision":

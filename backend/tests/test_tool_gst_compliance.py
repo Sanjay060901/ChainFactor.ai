@@ -9,7 +9,6 @@ Tests GST compliance validation:
 """
 
 import pytest
-from unittest.mock import patch
 
 
 # ---------------------------------------------------------------------------
@@ -72,24 +71,6 @@ def _valid_extracted_data_intrastate() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Tests: DEMO_MODE
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_demo_mode_returns_compliant():
-    """In DEMO_MODE, validate_gst_compliance returns compliant result."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = True
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
-
-        result = validate_gst_compliance(_valid_extracted_data_interstate())
-
-    assert result["is_compliant"] is True
-    assert "details" in result
-
-
-# ---------------------------------------------------------------------------
 # Tests: HSN/SAC code validation
 # ---------------------------------------------------------------------------
 
@@ -97,11 +78,9 @@ async def test_demo_mode_returns_compliant():
 @pytest.mark.asyncio
 async def test_valid_hsn_codes():
     """Valid 6-digit HSN/SAC codes should pass validation."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        result = validate_gst_compliance(_valid_extracted_data_interstate())
+    result = validate_gst_compliance(_valid_extracted_data_interstate())
 
     assert result["details"]["hsn_valid"] is True
 
@@ -109,13 +88,11 @@ async def test_valid_hsn_codes():
 @pytest.mark.asyncio
 async def test_invalid_hsn_code_too_short():
     """HSN code with fewer than 4 digits should fail."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_interstate()
-        data["line_items"][0]["hsn_code"] = "99"  # Too short
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_interstate()
+    data["line_items"][0]["hsn_code"] = "99"  # Too short
+    result = validate_gst_compliance(data)
 
     assert result["details"]["hsn_valid"] is False
 
@@ -123,13 +100,11 @@ async def test_invalid_hsn_code_too_short():
 @pytest.mark.asyncio
 async def test_invalid_hsn_code_non_numeric():
     """HSN code with non-numeric chars should fail."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_interstate()
-        data["line_items"][0]["hsn_code"] = "99AB11"  # Non-numeric
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_interstate()
+    data["line_items"][0]["hsn_code"] = "99AB11"  # Non-numeric
+    result = validate_gst_compliance(data)
 
     assert result["details"]["hsn_valid"] is False
 
@@ -142,13 +117,11 @@ async def test_invalid_hsn_code_non_numeric():
 @pytest.mark.asyncio
 async def test_it_services_18_percent():
     """IT services (998311-998319) should have 18% tax rate."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_interstate()
-        data["tax_rate"] = 18.0
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_interstate()
+    data["tax_rate"] = 18.0
+    result = validate_gst_compliance(data)
 
     assert result["details"]["rate_match"] is True
 
@@ -156,25 +129,23 @@ async def test_it_services_18_percent():
 @pytest.mark.asyncio
 async def test_computers_18_percent():
     """Computers (8471) should have 18% tax rate."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_interstate()
-        data["line_items"] = [
-            {
-                "description": "Laptop",
-                "hsn_code": "84713010",
-                "quantity": 1,
-                "rate": 10000.0,
-                "amount": 10000.0,
-            }
-        ]
-        data["subtotal"] = 10000.0
-        data["tax_rate"] = 18.0
-        data["tax_amount"] = 1800.0
-        data["total_amount"] = 11800.0
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_interstate()
+    data["line_items"] = [
+        {
+            "description": "Laptop",
+            "hsn_code": "84713010",
+            "quantity": 1,
+            "rate": 10000.0,
+            "amount": 10000.0,
+        }
+    ]
+    data["subtotal"] = 10000.0
+    data["tax_rate"] = 18.0
+    data["tax_amount"] = 1800.0
+    data["total_amount"] = 11800.0
+    result = validate_gst_compliance(data)
 
     assert result["details"]["rate_match"] is True
 
@@ -182,25 +153,23 @@ async def test_computers_18_percent():
 @pytest.mark.asyncio
 async def test_rice_5_percent():
     """Rice (1006) should have 5% tax rate."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_interstate()
-        data["line_items"] = [
-            {
-                "description": "Basmati Rice",
-                "hsn_code": "100630",
-                "quantity": 100,
-                "rate": 50.0,
-                "amount": 5000.0,
-            }
-        ]
-        data["subtotal"] = 5000.0
-        data["tax_rate"] = 5.0
-        data["tax_amount"] = 250.0
-        data["total_amount"] = 5250.0
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_interstate()
+    data["line_items"] = [
+        {
+            "description": "Basmati Rice",
+            "hsn_code": "100630",
+            "quantity": 100,
+            "rate": 50.0,
+            "amount": 5000.0,
+        }
+    ]
+    data["subtotal"] = 5000.0
+    data["tax_rate"] = 5.0
+    data["tax_amount"] = 250.0
+    data["total_amount"] = 5250.0
+    result = validate_gst_compliance(data)
 
     assert result["details"]["rate_match"] is True
 
@@ -208,25 +177,23 @@ async def test_rice_5_percent():
 @pytest.mark.asyncio
 async def test_meat_exempt():
     """Meat (0201) is exempt (0% tax)."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_interstate()
-        data["line_items"] = [
-            {
-                "description": "Fresh Beef",
-                "hsn_code": "020100",
-                "quantity": 10,
-                "rate": 500.0,
-                "amount": 5000.0,
-            }
-        ]
-        data["subtotal"] = 5000.0
-        data["tax_rate"] = 0.0
-        data["tax_amount"] = 0.0
-        data["total_amount"] = 5000.0
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_interstate()
+    data["line_items"] = [
+        {
+            "description": "Fresh Beef",
+            "hsn_code": "020100",
+            "quantity": 10,
+            "rate": 500.0,
+            "amount": 5000.0,
+        }
+    ]
+    data["subtotal"] = 5000.0
+    data["tax_rate"] = 0.0
+    data["tax_amount"] = 0.0
+    data["total_amount"] = 5000.0
+    result = validate_gst_compliance(data)
 
     assert result["details"]["rate_match"] is True
 
@@ -234,14 +201,12 @@ async def test_meat_exempt():
 @pytest.mark.asyncio
 async def test_rate_mismatch():
     """Wrong tax rate for HSN code should fail rate_match."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_interstate()
-        # IT services should be 18%, set to 5%
-        data["tax_rate"] = 5.0
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_interstate()
+    # IT services should be 18%, set to 5%
+    data["tax_rate"] = 5.0
+    result = validate_gst_compliance(data)
 
     assert result["details"]["rate_match"] is False
     assert result["is_compliant"] is False
@@ -255,13 +220,11 @@ async def test_rate_mismatch():
 @pytest.mark.asyncio
 async def test_interstate_igst_correct():
     """Different state codes (27 vs 29) with IGST should be correct."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_interstate()
-        data["tax_type"] = "IGST"
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_interstate()
+    data["tax_type"] = "IGST"
+    result = validate_gst_compliance(data)
 
     assert result["details"]["tax_type_correct"] is True
 
@@ -269,12 +232,10 @@ async def test_interstate_igst_correct():
 @pytest.mark.asyncio
 async def test_intrastate_cgst_sgst_correct():
     """Same state codes (27 vs 27) with CGST+SGST should be correct."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_intrastate()
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_intrastate()
+    result = validate_gst_compliance(data)
 
     assert result["details"]["tax_type_correct"] is True
 
@@ -282,13 +243,11 @@ async def test_intrastate_cgst_sgst_correct():
 @pytest.mark.asyncio
 async def test_interstate_cgst_sgst_wrong():
     """Different state codes with CGST+SGST (should be IGST) is incorrect."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_interstate()
-        data["tax_type"] = "CGST+SGST"  # Wrong for inter-state
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_interstate()
+    data["tax_type"] = "CGST+SGST"  # Wrong for inter-state
+    result = validate_gst_compliance(data)
 
     assert result["details"]["tax_type_correct"] is False
 
@@ -296,16 +255,12 @@ async def test_interstate_cgst_sgst_wrong():
 @pytest.mark.asyncio
 async def test_intrastate_igst_wrong():
     """Same state codes with IGST (should be CGST+SGST) is incorrect."""
-    with patch("app.agents.tools.validate_fields.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
 
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_intrastate()
-        data["tax_type"] = "IGST"  # Wrong for intra-state
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_intrastate()
+    data["tax_type"] = "IGST"  # Wrong for intra-state
+    result = validate_gst_compliance(data)
 
     assert result["details"]["tax_type_correct"] is False
 
@@ -318,13 +273,11 @@ async def test_intrastate_igst_wrong():
 @pytest.mark.asyncio
 async def test_einvoice_not_required_below_threshold():
     """Turnover below 5 crore should not require e-invoice."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_interstate()
-        data["seller_turnover"] = 4_00_00_000  # 4 crore (below 5 crore threshold)
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_interstate()
+    data["seller_turnover"] = 4_00_00_000  # 4 crore (below 5 crore threshold)
+    result = validate_gst_compliance(data)
 
     assert result["details"].get("einvoice_required") is False
 
@@ -332,13 +285,11 @@ async def test_einvoice_not_required_below_threshold():
 @pytest.mark.asyncio
 async def test_einvoice_required_above_threshold():
     """Turnover above 5 crore should require e-invoice."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_interstate()
-        data["seller_turnover"] = 6_00_00_000  # 6 crore (above threshold)
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_interstate()
+    data["seller_turnover"] = 6_00_00_000  # 6 crore (above threshold)
+    result = validate_gst_compliance(data)
 
     assert result["details"].get("einvoice_required") is True
 
@@ -351,11 +302,9 @@ async def test_einvoice_required_above_threshold():
 @pytest.mark.asyncio
 async def test_return_shape():
     """Result must have is_compliant and details keys with expected sub-keys."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        result = validate_gst_compliance(_valid_extracted_data_interstate())
+    result = validate_gst_compliance(_valid_extracted_data_interstate())
 
     assert "is_compliant" in result
     assert "details" in result
@@ -369,13 +318,11 @@ async def test_return_shape():
 @pytest.mark.asyncio
 async def test_missing_tax_type_defaults_gracefully():
     """If tax_type is missing, tool should still return a result without crashing."""
-    with patch("app.agents.tools.validate_gst_compliance.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        from app.agents.tools.validate_gst_compliance import validate_gst_compliance
+    from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 
-        data = _valid_extracted_data_interstate()
-        data.pop("tax_type", None)
-        result = validate_gst_compliance(data)
+    data = _valid_extracted_data_interstate()
+    data.pop("tax_type", None)
+    result = validate_gst_compliance(data)
 
     assert "is_compliant" in result
     assert "details" in result

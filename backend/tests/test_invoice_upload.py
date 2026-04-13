@@ -5,7 +5,6 @@ Tests the real upload endpoint (not stub):
 - S3 upload via mocked boto3
 - Invoice DB record creation
 - Auth required
-- DEMO_MODE fallback
 """
 
 import io
@@ -15,7 +14,6 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 
 
 # ---------------------------------------------------------------------------
@@ -34,43 +32,14 @@ def _make_txt_bytes() -> bytes:
     return b"This is not a PDF file"
 
 
-@pytest.fixture
-def _disable_demo_mode():
-    """Temporarily disable DEMO_MODE for tests that need real behavior."""
-    original = settings.DEMO_MODE
-    settings.DEMO_MODE = False
-    yield
-    settings.DEMO_MODE = original
 
 
 # ---------------------------------------------------------------------------
-# Tests: DEMO_MODE (default in test suite)
+# Tests: Real upload
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_upload_demo_mode_returns_stub(client: AsyncClient):
-    """In DEMO_MODE, upload returns pre-computed stub response."""
-    pdf_data = _make_pdf_bytes(10)
-
-    response = await client.post(
-        "/api/v1/invoices/upload",
-        files={"file": ("invoice.pdf", io.BytesIO(pdf_data), "application/pdf")},
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["invoice_id"] == "inv_stub_001"
-    assert data["status"] == "uploaded"
-
-
-# ---------------------------------------------------------------------------
-# Tests: Real upload (DEMO_MODE off)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-@pytest.mark.usefixtures("_disable_demo_mode")
 async def test_upload_pdf_success(client: AsyncClient, db_session: AsyncSession):
     """Upload a valid PDF -> 200, creates Invoice in DB, returns invoice_id."""
     pdf_data = _make_pdf_bytes(50)
@@ -97,7 +66,6 @@ async def test_upload_pdf_success(client: AsyncClient, db_session: AsyncSession)
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("_disable_demo_mode")
 async def test_upload_rejects_non_pdf(client: AsyncClient):
     """Upload a .txt file -> 400 with clear error message."""
     txt_data = _make_txt_bytes()
@@ -114,7 +82,6 @@ async def test_upload_rejects_non_pdf(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("_disable_demo_mode")
 async def test_upload_rejects_oversized_file(client: AsyncClient):
     """Upload a PDF > 5MB -> 400 with size error."""
     big_pdf = _make_pdf_bytes(5500)  # ~5.5 MB, over 5MB limit
@@ -131,7 +98,6 @@ async def test_upload_rejects_oversized_file(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("_disable_demo_mode")
 async def test_upload_returns_correct_response_shape(client: AsyncClient):
     """Verify response matches the wireframe API contract."""
     pdf_data = _make_pdf_bytes(20)
@@ -156,7 +122,6 @@ async def test_upload_returns_correct_response_shape(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("_disable_demo_mode")
 async def test_upload_s3_called_with_user_path(client: AsyncClient, test_user):
     """S3 key should include user_id for tenant isolation."""
     pdf_data = _make_pdf_bytes(10)
@@ -178,21 +143,3 @@ async def test_upload_s3_called_with_user_path(client: AsyncClient, test_user):
     s3_key = call_kwargs.kwargs.get("s3_key", "")
     assert str(test_user.id) in s3_key
 
-
-@pytest.mark.asyncio
-async def test_upload_requires_auth(unauth_client: AsyncClient):
-    """Upload without auth -> returns demo stub (DEMO_MODE on) or 401 (off)."""
-    # With DEMO_MODE=True (conftest default), unauth still works (demo user)
-    # This test verifies that when DEMO_MODE is off, auth is enforced
-    original = settings.DEMO_MODE
-    settings.DEMO_MODE = False
-    try:
-        pdf_data = _make_pdf_bytes(10)
-        response = await unauth_client.post(
-            "/api/v1/invoices/upload",
-            files={"file": ("invoice.pdf", io.BytesIO(pdf_data), "application/pdf")},
-        )
-        # Without auth token and DEMO_MODE off, should fail
-        assert response.status_code in (401, 403)
-    finally:
-        settings.DEMO_MODE = original

@@ -6,15 +6,12 @@ persist to the underwriting_decisions table.
 
 Dependencies:
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE)
 """
 
 import logging
 from datetime import datetime, timezone
 
 from strands import tool
-
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -53,15 +50,12 @@ def reject_invoice(
         "timestamp": timestamp,
     }
 
-    if settings.DEMO_MODE:
-        logger.info("DEMO_MODE: reject_invoice for %s", invoice_id)
-    else:
-        logger.info(
-            "Invoice %s REJECTED: risk_score=%d, fraud_flags=%s, reason=%s",
-            invoice_id,
-            risk_score,
-            fraud_flags,
-            reason,
-        )
+    logger.info(
+        "Invoice %s REJECTED: risk_score=%d, fraud_flags=%s, reason=%s",
+        invoice_id,
+        risk_score,
+        fraud_flags,
+        reason,
+    )
 
     return decision_record

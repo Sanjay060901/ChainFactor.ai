@@ -15,7 +15,7 @@ const NAV_ITEMS = [
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const { activeWallet, activeAccount, wallets } = useWallet();
 
   const connected = !!activeAccount;
@@ -42,6 +42,16 @@ export function Navbar() {
   function handleLogout() {
     logout();
     router.push("/auth/login");
+  }
+
+  async function handleDeleteAccount() {
+    if (!confirm("Permanently delete your account and all data? This cannot be undone.")) return;
+    try {
+      await deleteAccount();
+      router.push("/auth/login");
+    } catch {
+      // error handled by api client
+    }
   }
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -121,6 +131,9 @@ export function Navbar() {
                   <hr className="border-slate-800 my-1" />
                   <button onClick={handleLogout} className="w-full rounded-md px-3 py-1.5 text-left text-xs text-red-400 hover:bg-red-500/10 transition-colors">
                     Sign Out
+                  </button>
+                  <button onClick={handleDeleteAccount} className="w-full rounded-md px-3 py-1.5 text-left text-xs text-red-400/60 hover:bg-red-500/10 hover:text-red-400 transition-colors">
+                    Delete Account
                   </button>
                 </div>
               )}

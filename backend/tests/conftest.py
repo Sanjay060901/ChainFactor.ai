@@ -12,9 +12,6 @@ from app.config import settings
 from app.models.base import Base
 from app.models.user import User
 
-# Force DEMO_MODE for tests
-settings.DEMO_MODE = True
-
 # In-memory SQLite for tests (async)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///file::memory:?cache=shared&uri=true"
 

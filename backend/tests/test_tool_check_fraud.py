@@ -1,7 +1,6 @@
 """TDD tests for Feature 4.7: check_fraud tool -- 5-layer fraud detection.
 
 Tests cover:
-- Demo mode returns pre-computed all-pass result
 - Clean invoice passes all 5 layers
 - Invalid math fails Financial Consistency layer
 - "DUP" in invoice number fails Cross-Reference layer
@@ -13,9 +12,6 @@ Tests cover:
 - Inactive GSTIN fails Entity Verification layer
 - Each layer function is independently testable
 """
-
-
-from app.config import settings
 
 
 # ---------------------------------------------------------------------------
@@ -67,51 +63,6 @@ def _clean_gstin_verification() -> dict:
             "buyer_on_blocklist": False,
         },
     }
-
-
-# ---------------------------------------------------------------------------
-# Tests: Demo mode
-# ---------------------------------------------------------------------------
-
-
-class TestDemoMode:
-    """Demo mode returns pre-computed all-pass result with no real logic."""
-
-    def test_demo_mode_returns_pass(self):
-        original = settings.DEMO_MODE
-        settings.DEMO_MODE = True
-        try:
-            from app.agents.tools.check_fraud import check_fraud
-
-            result = check_fraud(
-                extracted_data=_clean_extracted_data(),
-                gstin_verification=_clean_gstin_verification(),
-            )
-            assert result["overall"] == "pass"
-            assert result["confidence"] == 97.0
-            assert result["flags"] == []
-            assert len(result["layers"]) == 5
-            for layer in result["layers"]:
-                assert layer["result"] == "pass"
-        finally:
-            settings.DEMO_MODE = original
-
-    def test_demo_mode_ignores_bad_data(self):
-        """Even with bad data, demo mode returns a fixed pass."""
-        original = settings.DEMO_MODE
-        settings.DEMO_MODE = True
-        try:
-            from app.agents.tools.check_fraud import check_fraud
-
-            bad_data = _clean_extracted_data()
-            bad_data["total_amount"] = -999.0  # would normally fail
-            result = check_fraud(
-                extracted_data=bad_data,
-                gstin_verification=_clean_gstin_verification(),
-            )
-            assert result["overall"] == "pass"
-        finally:
-            settings.DEMO_MODE = original
 
 
 # ---------------------------------------------------------------------------
@@ -323,13 +274,6 @@ class TestCrossReferenceLayer:
 
 class TestOverallResult:
     """End-to-end check_fraud with DEMO_MODE off."""
-
-    def setup_method(self):
-        self._original = settings.DEMO_MODE
-        settings.DEMO_MODE = False
-
-    def teardown_method(self):
-        settings.DEMO_MODE = self._original
 
     def test_clean_invoice_all_pass(self):
         from app.agents.tools.check_fraud import check_fraud

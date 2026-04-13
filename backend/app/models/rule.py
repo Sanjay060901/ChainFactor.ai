@@ -3,22 +3,22 @@
 import uuid
 
 from sqlalchemy import Boolean, ForeignKey, String
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
+from app.models.compat import GUID, JSONType
 
 
 class Rule(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "rules"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+        GUID(), ForeignKey("users.id"), nullable=False, index=True
     )
 
-    # Conditions stored as JSONB list:
+    # Conditions stored as JSON list:
     # [{"field": "invoice_amount", "operator": "less_than", "value": 500000}, ...]
-    conditions: Mapped[list] = mapped_column(JSONB, nullable=False)
+    conditions: Mapped[list] = mapped_column(JSONType(), nullable=False)
 
     # Action: "auto_approve", "flag_for_review", "reject"
     action: Mapped[str] = mapped_column(

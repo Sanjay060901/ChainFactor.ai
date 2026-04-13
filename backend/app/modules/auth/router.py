@@ -6,11 +6,17 @@ import uuid
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_, select
+from sqlalchemy import delete as sql_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
+from app.models.invoice import Invoice
+from app.models.nft_record import NFTRecord
+from app.models.agent_trace import AgentTrace
+from app.models.rule import Rule
+from app.models.user_settings import UserSettings
 from app.modules.auth.dependencies import (
     create_access_token,
     create_refresh_token,
@@ -191,3 +197,44 @@ async def get_me(current_user: User = Depends(get_current_user)):
         email=current_user.email,
         phone=current_user.phone,
     )
+
+
+@router.delete("/account")
+async def delete_account(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete the authenticated user's account and all related data."""
+    user_id = current_user.id
+
+    # Delete related records in dependency order
+    # 1. NFT records and agent traces (FK -> invoices)
+    invoice_ids_result = await db.execute(
+        select(Invoice.id).where(Invoice.user_id == user_id)
+    )
+    invoice_ids = [row[0] for row in invoice_ids_result.all()]
+
+    if invoice_ids:
+        await db.execute(
+            sql_delete(NFTRecord).where(NFTRecord.invoice_id.in_(invoice_ids))
+        )
+        await db.execute(
+            sql_delete(AgentTrace).where(AgentTrace.invoice_id.in_(invoice_ids))
+        )
+        # 2. Invoices
+        await db.execute(
+            sql_delete(Invoice).where(Invoice.user_id == user_id)
+        )
+
+    # 3. Rules
+    await db.execute(sql_delete(Rule).where(Rule.user_id == user_id))
+
+    # 4. User settings
+    await db.execute(sql_delete(UserSettings).where(UserSettings.user_id == user_id))
+
+    # 5. User
+    await db.delete(current_user)
+    await db.commit()
+
+    logger.info("Deleted account for user %s (%s)", user_id, current_user.email)
+    return {"message": f"Account {current_user.email} deleted successfully"}

@@ -12,7 +12,6 @@ class Settings(BaseSettings):
     APP_NAME: str = "ChainFactor AI"
     APP_ENV: str = "development"
     DEBUG: bool = True
-    DEMO_MODE: bool = False
 
     # Auth (self-signed JWT when Cognito is not configured)
     JWT_SECRET: str = "chainfactor-dev-secret-change-in-production"
@@ -51,6 +50,10 @@ class Settings(BaseSettings):
     BEDROCK_SONNET_MODEL_ID: str = "us.anthropic.claude-sonnet-4-6-v1"
     BEDROCK_OPUS_MODEL_ID: str = "us.anthropic.claude-opus-4-6-v1"
     BEDROCK_HAIKU_MODEL_ID: str = "us.anthropic.claude-haiku-4-5-20251001"
+
+    # Agent pipeline
+    AGENT_PIPELINE_TIMEOUT: int = 120  # seconds (2 minutes, hackathon target)
+    AGENT_MAX_RETRIES: int = 2  # retries per tool on transient Bedrock errors
 
     # Algorand
     ALGORAND_NETWORK: str = "testnet"

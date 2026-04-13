@@ -18,7 +18,7 @@ from app.agents.tools.get_invoice_data import _get_invoice_data_tool
 from app.agents.tools.get_seller_rules import _get_seller_rules_tool
 from app.agents.tools.log_decision import log_decision
 from app.agents.tools.reject_invoice import reject_invoice
-from app.modules.agents.config import SONNET_MODEL_ID, get_bedrock_model
+from app.modules.agents.config import UNDERWRITING_AGENT_CONFIG, get_model_for_agent
 
 UNDERWRITING_AGENT_SYSTEM_PROMPT = """You are the Underwriting Agent for ChainFactor AI, an AI-powered invoice financing platform for Indian SMEs.
 
@@ -65,12 +65,13 @@ UNDERWRITING_AGENT_TOOLS: list = [
 
 def create_underwriting_agent() -> Agent:
     """Create and return the Underwriting Agent."""
-    model = get_bedrock_model(SONNET_MODEL_ID)
+    config = UNDERWRITING_AGENT_CONFIG
+    model = get_model_for_agent(config)
 
     return Agent(
         model=model,
-        name="underwriting_agent",
-        description="Makes autonomous underwriting decisions (approve/reject/flag) with cross-validation and full reasoning traces.",
+        name=config.name,
+        description=config.description,
         system_prompt=UNDERWRITING_AGENT_SYSTEM_PROMPT,
         tools=UNDERWRITING_AGENT_TOOLS,
     )

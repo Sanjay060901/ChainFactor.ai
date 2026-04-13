@@ -1,4 +1,4 @@
-"""Integration tests for auth API endpoints (DEMO_MODE stubs)."""
+"""Integration tests for auth API endpoints."""
 
 import pytest
 from httpx import AsyncClient
@@ -6,14 +6,14 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_register(client: AsyncClient):
-    """POST /api/v1/auth/register returns user_id in demo mode."""
+    """POST /api/v1/auth/register returns user_id."""
     body = {
-        "phone": "+919876543210",
-        "email": "test@test.com",
+        "phone": "+919999999999",
+        "email": "newuser@test.com",
         "password": "Test@1234",
-        "name": "Test",
-        "company_name": "TestCo",
-        "gstin": "27AABCT1234R1ZM",
+        "name": "New User",
+        "company_name": "NewCo",
+        "gstin": "29AABCN5678R1ZX",
     }
 
     response = await client.post("/api/v1/auth/register", json=body)
@@ -26,14 +26,26 @@ async def test_register(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_login(client: AsyncClient):
-    """POST /api/v1/auth/login returns access_token in demo mode."""
-    body = {
-        "phone_or_email": "test@test.com",
-        "password": "Test@1234",
+async def test_register_and_login(client: AsyncClient):
+    """Register a new user, then login with those credentials."""
+    # Register
+    reg_body = {
+        "phone": "+919888888888",
+        "email": "logintest@test.com",
+        "password": "Login@1234",
+        "name": "Login Test",
+        "company_name": "LoginCo",
+        "gstin": "27AABCL5678R1ZX",
     }
+    reg_resp = await client.post("/api/v1/auth/register", json=reg_body)
+    assert reg_resp.status_code == 200
 
-    response = await client.post("/api/v1/auth/login", json=body)
+    # Login with same credentials
+    login_body = {
+        "phone_or_email": "logintest@test.com",
+        "password": "Login@1234",
+    }
+    response = await client.post("/api/v1/auth/login", json=login_body)
 
     assert response.status_code == 200
     data = response.json()
@@ -44,8 +56,31 @@ async def test_login(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_login_wrong_password(client: AsyncClient):
+    """Login with wrong password returns 401."""
+    # Register first
+    reg_body = {
+        "phone": "+919777777777",
+        "email": "wrongpwd@test.com",
+        "password": "Correct@1234",
+        "name": "Wrong Pwd",
+        "company_name": "WrongCo",
+        "gstin": "29AABCW9999R1ZX",
+    }
+    await client.post("/api/v1/auth/register", json=reg_body)
+
+    # Login with wrong password
+    login_body = {
+        "phone_or_email": "wrongpwd@test.com",
+        "password": "Wrong@1234",
+    }
+    response = await client.post("/api/v1/auth/login", json=login_body)
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_verify_otp(client: AsyncClient):
-    """POST /api/v1/auth/verify-otp returns 200 in demo mode."""
+    """POST /api/v1/auth/verify-otp returns tokens for existing user."""
     body = {
         "phone": "+919876543210",
         "otp_code": "123456",
@@ -59,13 +94,31 @@ async def test_verify_otp(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_refresh(client: AsyncClient):
-    """POST /api/v1/auth/refresh returns new access_token in demo mode."""
-    body = {
-        "refresh_token": "some_token",
+async def test_register_and_refresh(client: AsyncClient):
+    """Register, login, then refresh the token."""
+    # Register
+    reg_body = {
+        "phone": "+919666666666",
+        "email": "refresh@test.com",
+        "password": "Refresh@1234",
+        "name": "Refresh Test",
+        "company_name": "RefreshCo",
+        "gstin": "27AABCR9999R1ZX",
     }
+    await client.post("/api/v1/auth/register", json=reg_body)
 
-    response = await client.post("/api/v1/auth/refresh", json=body)
+    # Login to get tokens
+    login_body = {
+        "phone_or_email": "refresh@test.com",
+        "password": "Refresh@1234",
+    }
+    login_resp = await client.post("/api/v1/auth/login", json=login_body)
+    assert login_resp.status_code == 200
+    refresh_token = login_resp.json()["refresh_token"]
+
+    # Refresh
+    refresh_body = {"refresh_token": refresh_token}
+    response = await client.post("/api/v1/auth/refresh", json=refresh_body)
 
     assert response.status_code == 200
     data = response.json()

@@ -6,15 +6,12 @@ persist to the underwriting_decisions table, and notify the review queue.
 
 Dependencies:
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE)
 """
 
 import logging
 from datetime import datetime, timezone
 
 from strands import tool
-
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -53,15 +50,12 @@ def flag_for_review(
         "timestamp": timestamp,
     }
 
-    if settings.DEMO_MODE:
-        logger.info("DEMO_MODE: flag_for_review for %s", invoice_id)
-    else:
-        logger.info(
-            "Invoice %s FLAGGED FOR REVIEW: risk_score=%d, discrepancies=%s, reason=%s",
-            invoice_id,
-            risk_score,
-            discrepancies,
-            reason,
-        )
+    logger.info(
+        "Invoice %s FLAGGED FOR REVIEW: risk_score=%d, discrepancies=%s, reason=%s",
+        invoice_id,
+        risk_score,
+        discrepancies,
+        reason,
+    )
 
     return decision_record

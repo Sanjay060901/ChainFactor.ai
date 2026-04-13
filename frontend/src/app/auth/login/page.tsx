@@ -22,16 +22,6 @@ export default function LoginPage() {
     }
   }
 
-  async function handleDemoLogin() {
-    // Demo mode: login with demo credentials
-    try {
-      await login("demo@chainfactor.ai", "Demo@1234");
-      router.push("/dashboard");
-    } catch {
-      // fallback if demo user not seeded
-    }
-  }
-
   return (
     <main className="relative flex min-h-screen items-center justify-center mesh-bg overflow-hidden">
       <div className="absolute inset-0 grid-pattern" />
@@ -92,12 +82,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-4 flex items-center gap-3">
-            <div className="flex-1 h-px bg-slate-700" />
-            <span className="text-xs text-slate-500">or</span>
-            <div className="flex-1 h-px bg-slate-700" />
-          </div>
-          <button onClick={handleDemoLogin} className="btn-outline-glow mt-3 w-full py-2.5 text-sm">🚀 Demo Mode (No Login)</button>
+
         </div>
       </motion.div>
     </main>

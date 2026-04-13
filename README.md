@@ -127,7 +127,7 @@ chainfactor-ai/
 │   │   ├── schemas/           # Pydantic request/response schemas
 │   │   ├── api/v1/            # Versioned API router
 │   │   ├── modules/           # Feature modules (auth, invoices, agents, blockchain, dashboard, rules)
-│   │   └── agents/            # Strands agents + tools (planned)
+│   │   └── agents/            # Strands agents + 11 AI tools
 │   ├── alembic/               # Database migrations
 │   ├── tests/                 # pytest test suite
 │   ├── Dockerfile             # Multi-stage build (builder -> runtime)
@@ -135,12 +135,13 @@ chainfactor-ai/
 ├── frontend/                   # Next.js 14 App Router
 │   ├── src/
 │   │   ├── app/               # Pages (auth, dashboard, invoices, rules)
-│   │   ├── components/        # React components (providers, navbar)
+│   │   ├── components/        # React components (providers, navbar, NFTCard, AIPanel)
+│   │   ├── hooks/             # Custom hooks (useAuth, useProcessing, useInvoiceId)
 │   │   └── lib/               # API client, constants
 │   ├── Dockerfile             # Multi-stage build (deps -> dev -> production)
 │   └── package.json
-├── contracts/                  # Algorand smart contracts (planned)
-│   └── invoice_nft/
+├── contracts/                  # Algorand smart contracts (ARC4 + ARC-69)
+│   └── invoice_nft/           # 7 ABI methods, fully implemented
 ├── infra/
 │   ├── docker-compose.yml     # Local dev: PostgreSQL + Redis + backend + frontend
 │   └── terraform/             # Enterprise IaC
@@ -211,11 +212,13 @@ Once the backend is running, visit:
 | GET | `/api/v1/invoices/{id}/stream` | SSE stream of processing steps |
 | POST | `/api/v1/invoices/{id}/nft/opt-in` | Opt-in to ASA |
 | POST | `/api/v1/invoices/{id}/nft/claim` | Claim NFT transfer |
-| GET | `/api/v1/invoices/{id}/audit` | Full agent reasoning chain |
+| GET | `/api/v1/invoices/{id}/audit-trail` | Full agent reasoning chain |
 | GET | `/api/v1/dashboard/summary` | Dashboard statistics |
-| POST | `/api/v1/dashboard/query` | Natural language query |
+| POST | `/api/v1/dashboard/nl-query` | Natural language query |
 | GET | `/api/v1/rules` | List auto-approve rules |
 | POST | `/api/v1/rules` | Create new rule |
+| GET | `/api/v1/verify/nft/{asset_id}` | Public NFT verification (no auth) |
+| GET | `/api/v1/settings/ai-config` | AI agent configuration |
 
 ## Database Schema
 
@@ -262,7 +265,18 @@ terraform apply -var-file=terraform.tfvars
 
 ## Demo Mode
 
-Set `DEMO_MODE=true` to bypass Bedrock and Algorand calls. Returns pre-computed results for 3 test invoices with realistic data and simulated processing delays. Perfect for demos and development without AWS costs.
+When no `S3_BUCKET_NAME` is configured, the backend automatically uses the demo pipeline. Returns pre-computed results for **4 test invoices** with realistic data and simulated processing delays:
+
+| Invoice | Status | Risk Score | Scenario |
+|---------|--------|-----------|----------|
+| INV-2026-001 | Approved | 82 (Low) | Clean invoice, auto-approved |
+| INV-2026-002 | Flagged | 45 (Medium) | Buyer GSTIN inactive |
+| INV-2026-003 | Minted | 91 (Low) | Excellent profile, NFT minted |
+| INV-2026-004 | Rejected | 12 (High) | Fraud signals detected |
+
+Demo login: `demo@chainfactor.ai` / `Demo@1234`
+
+**Live deployment**: https://d20nrao7c3w07a.cloudfront.net
 
 ## Team
 

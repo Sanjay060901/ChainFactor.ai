@@ -1,12 +1,10 @@
 """Tests for Feature 3.3: Invoice List Backend -- real DB queries.
 
 Tests cover:
-- DEMO_MODE returns stub data (existing behavior preserved)
-- Non-DEMO: pagination, filtering, sorting, search, IDOR prevention
+- pagination, filtering, sorting, search, IDOR prevention
 """
 
 import uuid
-from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
@@ -51,37 +49,12 @@ async def _create_invoice(
 
 
 # ---------------------------------------------------------------------------
-# DEMO_MODE tests (settings.DEMO_MODE = True by default in conftest)
+# Tests: real DB queries
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
-async def test_list_invoices_demo_mode(client: AsyncClient):
-    """In DEMO_MODE, list_invoices returns the pre-built stub data."""
-    response = await client.get("/api/v1/invoices")
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["total"] == 4
-    assert len(data["invoices"]) == 4
-    assert data["invoices"][0]["invoice_number"] == "INV-2026-001"
-
-
-@pytest.mark.asyncio
-async def test_list_invoices_demo_mode_ignores_filters(client: AsyncClient):
-    """In DEMO_MODE, query params are accepted but ignored (stub data returned)."""
-    response = await client.get(
-        "/api/v1/invoices?page=2&limit=2&status=rejected&risk_level=high&search=xyz"
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-    # Stub data unchanged regardless of filters
-    assert data["total"] == 4
-
-
 # ---------------------------------------------------------------------------
-# Non-DEMO mode tests (real DB queries)
+# DB query tests (real DB queries)
 # ---------------------------------------------------------------------------
 
 
@@ -90,9 +63,7 @@ async def test_list_invoices_real_empty(
     client: AsyncClient, db_session: AsyncSession, test_user: User
 ):
     """Non-DEMO with no invoices returns empty list."""
-    with patch("app.modules.invoices.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/invoices")
+    response = await client.get("/api/v1/invoices")
 
     assert response.status_code == 200
     data = response.json()
@@ -113,9 +84,7 @@ async def test_list_invoices_real_returns_user_invoices(
         db_session, test_user, invoice_number="INV-002", status="flagged"
     )
 
-    with patch("app.modules.invoices.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/invoices")
+    response = await client.get("/api/v1/invoices")
 
     assert response.status_code == 200
     data = response.json()
@@ -144,9 +113,7 @@ async def test_list_invoices_idor_prevention(
     await _create_invoice(db_session, other_user, invoice_number="INV-OTHER")
     await _create_invoice(db_session, test_user, invoice_number="INV-MINE")
 
-    with patch("app.modules.invoices.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/invoices")
+    response = await client.get("/api/v1/invoices")
 
     data = response.json()
     assert data["total"] == 1
@@ -161,9 +128,7 @@ async def test_list_invoices_pagination(
     for i in range(5):
         await _create_invoice(db_session, test_user, invoice_number=f"INV-PAG-{i:03d}")
 
-    with patch("app.modules.invoices.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/invoices?page=1&limit=2")
+    response = await client.get("/api/v1/invoices?page=1&limit=2")
 
     data = response.json()
     assert data["total"] == 5
@@ -188,9 +153,7 @@ async def test_list_invoices_filter_by_status(
         db_session, test_user, invoice_number="INV-R", status="rejected"
     )
 
-    with patch("app.modules.invoices.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/invoices?status=flagged")
+    response = await client.get("/api/v1/invoices?status=flagged")
 
     data = response.json()
     assert data["total"] == 1
@@ -206,9 +169,7 @@ async def test_list_invoices_filter_by_risk_level(
     await _create_invoice(db_session, test_user, invoice_number="INV-M", risk_score=55)
     await _create_invoice(db_session, test_user, invoice_number="INV-H", risk_score=20)
 
-    with patch("app.modules.invoices.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/invoices?risk_level=low")
+    response = await client.get("/api/v1/invoices?risk_level=low")
 
     data = response.json()
     assert data["total"] == 1
@@ -223,9 +184,7 @@ async def test_list_invoices_search(
     await _create_invoice(db_session, test_user, invoice_number="INV-SEARCH-ABC")
     await _create_invoice(db_session, test_user, invoice_number="INV-OTHER-XYZ")
 
-    with patch("app.modules.invoices.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/invoices?search=search")
+    response = await client.get("/api/v1/invoices?search=search")
 
     data = response.json()
     assert data["total"] == 1
@@ -244,9 +203,7 @@ async def test_list_invoices_sort_ascending(
         db_session, test_user, invoice_number="INV-LOW", risk_score=10
     )
 
-    with patch("app.modules.invoices.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/invoices?sort=risk_score")
+    response = await client.get("/api/v1/invoices?sort=risk_score")
 
     data = response.json()
     assert len(data["invoices"]) == 2

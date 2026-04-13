@@ -10,7 +10,6 @@ Mock rules:
 - "07" (Delhi): INACTIVE, not blocklisted
 - Others: active, not blocklisted
 - verified = True if BOTH seller and buyer are active and neither blocklisted
-- DEMO_MODE: returns all-active, verified=True
 """
 
 from app.agents.tools.verify_gstn import verify_gstn
@@ -39,7 +38,6 @@ class TestVerifyGstnReturnShape:
         result = verify_gstn(
             seller_gstin=_active_gstin("27"),
             buyer_gstin=_active_gstin("29"),
-            _demo=False,
         )
         assert "verified" in result
         assert "status" in result
@@ -50,7 +48,6 @@ class TestVerifyGstnReturnShape:
         result = verify_gstn(
             seller_gstin=_active_gstin("27"),
             buyer_gstin=_active_gstin("29"),
-            _demo=False,
         )
         details = result["details"]
         assert "seller_gstin_active" in details
@@ -63,7 +60,6 @@ class TestVerifyGstnReturnShape:
         result = verify_gstn(
             seller_gstin=_active_gstin("27"),
             buyer_gstin=_active_gstin("29"),
-            _demo=False,
         )
         assert isinstance(result["verified"], bool)
         assert isinstance(result["status"], str)
@@ -84,7 +80,6 @@ class TestVerifyGstnMockRules:
         result = verify_gstn(
             seller_gstin=_active_gstin("27"),
             buyer_gstin=_active_gstin("27"),
-            _demo=False,
         )
         assert result["details"]["seller_gstin_active"] is True
         assert result["details"]["buyer_gstin_active"] is True
@@ -96,7 +91,6 @@ class TestVerifyGstnMockRules:
         result = verify_gstn(
             seller_gstin=_active_gstin("29"),
             buyer_gstin=_active_gstin("29"),
-            _demo=False,
         )
         assert result["details"]["seller_gstin_active"] is True
         assert result["details"]["buyer_gstin_active"] is True
@@ -106,7 +100,6 @@ class TestVerifyGstnMockRules:
         result = verify_gstn(
             seller_gstin=_active_gstin("09"),
             buyer_gstin=_active_gstin("09"),
-            _demo=False,
         )
         assert result["details"]["seller_gstin_active"] is True
         assert result["details"]["buyer_gstin_active"] is True
@@ -116,7 +109,6 @@ class TestVerifyGstnMockRules:
         result = verify_gstn(
             seller_gstin=_active_gstin("07"),
             buyer_gstin=_active_gstin("07"),
-            _demo=False,
         )
         assert result["details"]["seller_gstin_active"] is False
         assert result["details"]["buyer_gstin_active"] is False
@@ -126,7 +118,6 @@ class TestVerifyGstnMockRules:
         result = verify_gstn(
             seller_gstin=_active_gstin("33"),
             buyer_gstin=_active_gstin("33"),
-            _demo=False,
         )
         assert result["details"]["seller_gstin_active"] is True
         assert result["details"]["buyer_gstin_active"] is True
@@ -147,7 +138,6 @@ class TestVerifyGstnVerifiedFlag:
         result = verify_gstn(
             seller_gstin=_active_gstin("27"),
             buyer_gstin=_active_gstin("29"),
-            _demo=False,
         )
         assert result["verified"] is True
         assert result["status"] == "active"
@@ -157,7 +147,6 @@ class TestVerifyGstnVerifiedFlag:
         result = verify_gstn(
             seller_gstin=_active_gstin("07"),
             buyer_gstin=_active_gstin("27"),
-            _demo=False,
         )
         assert result["verified"] is False
         assert result["status"] == "inactive"
@@ -167,7 +156,6 @@ class TestVerifyGstnVerifiedFlag:
         result = verify_gstn(
             seller_gstin=_active_gstin("27"),
             buyer_gstin=_active_gstin("07"),
-            _demo=False,
         )
         assert result["verified"] is False
         assert result["status"] == "inactive"
@@ -177,7 +165,6 @@ class TestVerifyGstnVerifiedFlag:
         result = verify_gstn(
             seller_gstin=_active_gstin("07"),
             buyer_gstin=_active_gstin("07"),
-            _demo=False,
         )
         assert result["verified"] is False
         assert result["status"] == "inactive"
@@ -187,7 +174,6 @@ class TestVerifyGstnVerifiedFlag:
         result = verify_gstn(
             seller_gstin=_active_gstin("27"),
             buyer_gstin=_active_gstin("29"),
-            _demo=False,
         )
         assert result["status"] == "active"
 
@@ -196,54 +182,11 @@ class TestVerifyGstnVerifiedFlag:
         result = verify_gstn(
             seller_gstin=_active_gstin("07"),
             buyer_gstin=_active_gstin("27"),
-            _demo=False,
         )
         assert result["status"] == "inactive"
 
 
 # ---------------------------------------------------------------------------
-# Tests: DEMO_MODE
-# ---------------------------------------------------------------------------
-
-
-class TestVerifyGstnDemoMode:
-    """DEMO_MODE always returns all-active, verified=True regardless of GSTINs."""
-
-    def test_demo_mode_all_active(self):
-        """Demo mode returns verified=True even when Delhi (07) prefix is used."""
-        result = verify_gstn(
-            seller_gstin=_active_gstin("07"),
-            buyer_gstin=_active_gstin("07"),
-            _demo=True,
-        )
-        assert result["verified"] is True
-        assert result["status"] == "active"
-        assert result["details"]["seller_gstin_active"] is True
-        assert result["details"]["buyer_gstin_active"] is True
-        assert result["details"]["seller_on_blocklist"] is False
-        assert result["details"]["buyer_on_blocklist"] is False
-
-    def test_demo_mode_returns_full_shape(self):
-        """Demo result has verified, status, and details keys."""
-        result = verify_gstn(
-            seller_gstin=_active_gstin("27"),
-            buyer_gstin=_active_gstin("29"),
-            _demo=True,
-        )
-        assert "verified" in result
-        assert "status" in result
-        assert "details" in result
-
-    def test_demo_mode_overrides_inactive_prefix(self):
-        """Even with an inactive prefix, demo mode returns active."""
-        result = verify_gstn(
-            seller_gstin=_active_gstin("07"),
-            buyer_gstin=_active_gstin("29"),
-            _demo=True,
-        )
-        assert result["verified"] is True
-
-
 # ---------------------------------------------------------------------------
 # Tests: Edge cases
 # ---------------------------------------------------------------------------
@@ -257,7 +200,6 @@ class TestVerifyGstnEdgeCases:
         result = verify_gstn(
             seller_gstin="",
             buyer_gstin=_active_gstin("29"),
-            _demo=False,
         )
         # Empty gstin has no prefix -> unknown prefix -> active (per spec)
         assert isinstance(result["verified"], bool)
@@ -268,7 +210,6 @@ class TestVerifyGstnEdgeCases:
         result = verify_gstn(
             seller_gstin=_active_gstin("27"),
             buyer_gstin="",
-            _demo=False,
         )
         assert result["details"]["buyer_gstin_active"] is True
 
@@ -277,7 +218,6 @@ class TestVerifyGstnEdgeCases:
         result = verify_gstn(
             seller_gstin="2",
             buyer_gstin="2",
-            _demo=False,
         )
         assert result["details"]["seller_gstin_active"] is True
 
@@ -286,7 +226,6 @@ class TestVerifyGstnEdgeCases:
         result = verify_gstn(
             seller_gstin=_active_gstin("27"),
             buyer_gstin=_active_gstin("07"),
-            _demo=False,
         )
         assert result["details"]["seller_gstin_active"] is True
         assert result["details"]["buyer_gstin_active"] is False

@@ -4,7 +4,7 @@
  * Base URL switches between local dev and production via env var.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 async function request<T>(
   path: string,
@@ -13,23 +13,51 @@ async function request<T>(
   const token =
     typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
+  const isFormData = options.body instanceof FormData;
+
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    // Don't set Content-Type for FormData — browser sets it with boundary
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(options.headers as Record<string, string>),
   };
 
-  if (token) {
+  // Don't send auth header for login/register/verify (no token needed, stale token causes 401)
+  const isAuthRoute = path.startsWith("/api/v1/auth/");
+  if (token && !isAuthRoute) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch (err) {
+    console.error(`[API] Network error for ${path}:`, err);
+    throw new Error("Network error – please check your internet connection and try again.");
+  }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(error.detail || `API error: ${res.status}`);
+    // Handle 401 — clear stale token and redirect to login
+    if (res.status === 401) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        // Only redirect if not already on the auth page
+        if (!window.location.pathname.startsWith("/auth")) {
+          window.location.href = "/auth/login";
+        }
+      }
+      throw new Error("Session expired — please log in again.");
+    }
+
+    const error = await res.json().catch(() => null);
+    const message =
+      typeof error === "string"
+        ? error
+        : (error?.detail && String(error.detail)) || error?.message || `API error: ${res.status}`;
+    throw new Error(message);
   }
 
   return res.json();
@@ -117,6 +145,15 @@ export const api = {
   getInvoice: (invoiceId: string) =>
     request<Record<string, unknown>>(`/api/v1/invoices/${invoiceId}`),
 
+  deleteInvoice: (invoiceId: string) =>
+    request<{ message: string }>(`/api/v1/invoices/${invoiceId}`, { method: "DELETE" }),
+
+  processInvoice: (invoiceId: string) =>
+    request<{ invoice_id: string; status: string; ws_url: string }>(
+      `/api/v1/invoices/${invoiceId}/process`,
+      { method: "POST" }
+    ),
+
   getAuditTrail: (invoiceId: string) =>
     request<Record<string, unknown>>(`/api/v1/invoices/${invoiceId}/audit-trail`),
 
@@ -128,7 +165,8 @@ export const api = {
 
   nftClaim: (invoiceId: string, body: { wallet_address: string }) =>
     request<{
-      txn_id: string;
+      optin_txn_id: string;
+      transfer_txn_id: string;
       asset_id: number;
       status: string;
       explorer_url: string;
@@ -190,6 +228,68 @@ export const api = {
     request("/api/v1/rules/default-action", {
       method: "PUT",
       body: JSON.stringify({ default_action: defaultAction }),
+    }),
+
+  // Account
+  deleteAccount: () =>
+    request<{ message: string }>("/api/v1/auth/account", { method: "DELETE" }),
+
+  // AI Settings
+  getAIConfig: () =>
+    request<{
+      bedrock_region: string;
+      demo_mode: boolean;
+      pipeline_timeout: number;
+      max_retries: number;
+      agents: Array<{
+        name: string;
+        model_id: string;
+        description: string;
+        temperature: number;
+        max_tokens: number;
+        top_p: number;
+        timeout: number;
+        max_iterations: number;
+        stream_events: boolean;
+      }>;
+      swarm: {
+        max_handoffs: number;
+        max_iterations: number;
+        execution_timeout: number;
+        node_timeout: number;
+        agents: string[];
+      };
+      event_types: string[];
+    }>("/api/v1/settings/ai-config"),
+
+  getAIPreferences: () =>
+    request<{
+      pipeline_timeout: number;
+      auto_process: boolean;
+      enable_ws_streaming: boolean;
+      risk_threshold_low: number;
+      risk_threshold_high: number;
+      enable_nft_auto_mint: boolean;
+    }>("/api/v1/settings/ai-preferences"),
+
+  updateAIPreferences: (body: {
+    pipeline_timeout?: number;
+    auto_process?: boolean;
+    enable_ws_streaming?: boolean;
+    risk_threshold_low?: number;
+    risk_threshold_high?: number;
+    enable_nft_auto_mint?: boolean;
+  }) =>
+    request<{
+      pipeline_timeout: number;
+      auto_process: boolean;
+      enable_ws_streaming: boolean;
+      risk_threshold_low: number;
+      risk_threshold_high: number;
+      enable_nft_auto_mint: boolean;
+    }>("/api/v1/settings/ai-preferences", {
+      method: "PUT",
+      body: JSON.stringify(body),
     }),
 };
 

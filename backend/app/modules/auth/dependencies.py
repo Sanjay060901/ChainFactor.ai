@@ -19,9 +19,6 @@ logger = logging.getLogger(__name__)
 # Bearer token extractor
 bearer_scheme = HTTPBearer(auto_error=False)
 
-# Stub user for DEMO_MODE
-DEMO_USER_SUB = "demo-user-sub-00000000"
-
 
 def create_access_token(user_id: str, email: str) -> str:
     """Create a self-signed JWT access token."""
@@ -49,16 +46,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Extract and verify JWT from Authorization header, return User from DB.
-
-    In DEMO_MODE, returns a stub user without JWT verification.
-    Otherwise, verifies self-signed JWT and looks up user in DB.
-    """
-    # --- DEMO MODE: skip JWT, return/create stub user ---
-    if settings.DEMO_MODE:
-        return await _get_or_create_demo_user(db)
-
-    # --- PRODUCTION: verify JWT ---
+    """Extract and verify JWT from Authorization header, return User from DB."""
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -101,28 +89,6 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
-
-    return user
-
-
-async def _get_or_create_demo_user(db: AsyncSession) -> User:
-    """Get or create the demo user for DEMO_MODE."""
-    result = await db.execute(select(User).where(User.cognito_sub == DEMO_USER_SUB))
-    user = result.scalar_one_or_none()
-
-    if not user:
-        user = User(
-            cognito_sub=DEMO_USER_SUB,
-            name="Demo User",
-            email="demo@chainfactor.ai",
-            phone="+919876543210",
-            company_name="Acme Technologies Pvt Ltd",
-            gstin="27AABCU9603R1ZM",
-            wallet_address="ALGO7DEMO2ADDRESS3FOR4TESTING5WALLET6X4F2ABC",
-        )
-        db.add(user)
-        await db.flush()
-        logger.info("Created demo user")
 
     return user
 

@@ -1,12 +1,10 @@
 """Tests for Feature 5.1: Dashboard Summary Backend -- real DB aggregations.
 
 Tests cover:
-- DEMO_MODE returns stub data (existing behavior preserved)
-- Non-DEMO: aggregation queries on Invoice table
+- aggregation queries on Invoice table
 """
 
 import uuid
-from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
@@ -50,23 +48,7 @@ async def _create_invoice(
 
 
 # ---------------------------------------------------------------------------
-# DEMO_MODE tests
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_dashboard_summary_demo_mode(client: AsyncClient):
-    """In DEMO_MODE, dashboard returns pre-built stub data."""
-    response = await client.get("/api/v1/dashboard/summary")
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["total_value"] == 4520000
-    assert data["active_invoices"] == 12
-
-
-# ---------------------------------------------------------------------------
-# Non-DEMO mode tests (real DB aggregation)
+# Tests: real DB aggregation
 # ---------------------------------------------------------------------------
 
 
@@ -75,9 +57,7 @@ async def test_dashboard_summary_real_empty(
     client: AsyncClient, db_session: AsyncSession, test_user: User
 ):
     """Non-DEMO with no invoices returns zeroed stats."""
-    with patch("app.modules.dashboard.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/dashboard/summary")
+    response = await client.get("/api/v1/dashboard/summary")
 
     assert response.status_code == 200
     data = response.json()
@@ -98,9 +78,7 @@ async def test_dashboard_summary_real_counts(
     await _create_invoice(db_session, test_user, status="processing", risk_score=50)
     await _create_invoice(db_session, test_user, status="rejected", risk_score=20)
 
-    with patch("app.modules.dashboard.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/dashboard/summary")
+    response = await client.get("/api/v1/dashboard/summary")
 
     data = response.json()
     # active = approved + minted
@@ -133,9 +111,7 @@ async def test_dashboard_summary_real_idor(
     await _create_invoice(db_session, test_user, status="approved", risk_score=80)
     await _create_invoice(db_session, other_user, status="approved", risk_score=90)
 
-    with patch("app.modules.dashboard.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/dashboard/summary")
+    response = await client.get("/api/v1/dashboard/summary")
 
     data = response.json()
     assert data["active_invoices"] == 1  # Only test_user's invoice
@@ -151,9 +127,7 @@ async def test_dashboard_summary_real_risk_distribution(
     await _create_invoice(db_session, test_user, risk_score=50)  # medium
     await _create_invoice(db_session, test_user, risk_score=15)  # high
 
-    with patch("app.modules.dashboard.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/dashboard/summary")
+    response = await client.get("/api/v1/dashboard/summary")
 
     data = response.json()
     dist = data["risk_distribution"]

@@ -40,6 +40,7 @@ def _mock_nft(asset_id: int = ASSET_ID, status: str = "minted") -> MagicMock:
     nft = MagicMock()
     nft.asset_id = asset_id
     nft.status = status
+    nft.mint_txn_id = "REAL_MINT_TXN_ABC123"  # Non-DEMO prefix to test real path
     nft.opt_in_txn_id = None
     nft.transfer_txn_id = None
     nft.claimed_by_wallet = None

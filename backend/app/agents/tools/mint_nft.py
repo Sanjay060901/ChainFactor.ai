@@ -1,8 +1,7 @@
 """mint_nft tool: ARC-69 NFT minting on Algorand testnet.
 
 Creates an Algorand Standard Asset (ASA) with ARC-69 metadata representing
-a verified invoice. In DEMO_MODE, returns a mock result without any algosdk
-calls. In real mode, uses _create_asa() to interact with the Algorand testnet.
+a verified invoice. Uses _create_asa() to interact with the Algorand testnet.
 
 Return shape:
     {"asset_id": int, "txn_id": str, "explorer_url": str, "metadata": dict}
@@ -13,8 +12,8 @@ ARC-69 metadata shape:
 
 Dependencies:
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE, PERA_EXPLORER_BASE_URL, ALGORAND_*)
-    - algosdk (py-algorand-sdk v2.11.1) -- only in real mode
+    - app.config.settings (PERA_EXPLORER_BASE_URL, ALGORAND_*)
+    - algosdk (py-algorand-sdk v2.11.1)
 """
 
 import json
@@ -30,8 +29,6 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-_DEMO_ASSET_ID = 123456789
-_DEMO_TXN_ID = "DEMO_TXN_MINT_001"
 _PERA_EXPLORER_ASSET_URL = "https://testnet.explorer.perawallet.app/asset/{asset_id}/"
 
 
@@ -209,29 +206,9 @@ def _resolve_mint(
     invoice_id: str,
     extracted_data: dict,
     risk_assessment: dict,
-    use_demo: bool,
 ) -> dict:
-    """Core minting logic, separated from the Strands decorator.
-
-    Args:
-        invoice_id: Invoice identifier.
-        extracted_data: Structured invoice data from extract_invoice tool.
-        risk_assessment: Risk assessment from calculate_risk tool.
-        use_demo: Whether to return the demo (mock) result.
-
-    Returns:
-        Dict with keys: asset_id (int), txn_id (str), explorer_url (str), metadata (dict).
-    """
+    """Core minting logic, separated from the Strands decorator."""
     metadata = _build_arc69_metadata(extracted_data, risk_assessment)
-
-    if use_demo:
-        logger.info("DEMO_MODE: returning mock NFT minting result")
-        return {
-            "asset_id": _DEMO_ASSET_ID,
-            "txn_id": _DEMO_TXN_ID,
-            "explorer_url": _explorer_url(_DEMO_ASSET_ID),
-            "metadata": metadata,
-        }
 
     logger.info("Minting ARC-69 NFT for invoice %s", invoice_id)
 
@@ -259,7 +236,7 @@ def _mint_nft_tool(
     """Mint an ARC-69 NFT on Algorand testnet for a verified invoice.
 
     Creates an Algorand Standard Asset with invoice metadata embedded as
-    an ARC-69 note. In DEMO_MODE, returns a mock result.
+    an ARC-69 note.
 
     Args:
         invoice_id: The invoice identifier.
@@ -270,14 +247,11 @@ def _mint_nft_tool(
         invoice_id,
         extracted_data,
         risk_assessment,
-        use_demo=settings.DEMO_MODE,
     )
 
 
 # ---------------------------------------------------------------------------
 # Public callable (used by tests and by agent tool list)
-# Accepts an optional _demo override so tests can force real/demo paths
-# without changing global settings.
 # ---------------------------------------------------------------------------
 
 
@@ -285,26 +259,19 @@ def mint_nft(
     invoice_id: str,
     extracted_data: dict,
     risk_assessment: dict,
-    _demo: bool = None,
 ) -> dict:
     """Mint an ARC-69 NFT on Algorand testnet for a verified invoice.
-
-    Wraps _mint_nft_tool with a _demo override for testability.
 
     Args:
         invoice_id: The invoice identifier.
         extracted_data: Structured invoice dict from extract_invoice tool.
         risk_assessment: Risk assessment dict from calculate_risk tool.
-        _demo: Override for DEMO_MODE. True forces demo path, False forces real
-               logic, None defers to settings.DEMO_MODE.
 
     Returns:
         Dict with keys: asset_id (int), txn_id (str), explorer_url (str), metadata (dict).
     """
-    use_demo = settings.DEMO_MODE if _demo is None else _demo
     return _resolve_mint(
         invoice_id,
         extracted_data,
         risk_assessment,
-        use_demo=use_demo,
     )

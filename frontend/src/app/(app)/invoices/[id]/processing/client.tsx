@@ -3,20 +3,22 @@
 import { PROCESSING_STEPS } from "@/lib/constants";
 import { motion } from "framer-motion";
 import { useProcessing } from "@/hooks/useProcessing";
+import { useInvoiceId } from "@/hooks/useInvoiceId";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function ProcessingClient({ params }: { params: { id: string } }) {
+  const invoiceId = useInvoiceId(params.id);
   const router = useRouter();
-  const { currentStep, completedSteps, progress, isComplete, isFailed, finalStatus, liveDetail, elapsedSeconds } = useProcessing(params.id);
+  const { currentStep, completedSteps, progress, isComplete, isFailed, finalStatus, liveDetail, elapsedSeconds } = useProcessing(invoiceId);
 
   // Redirect to detail page on completion
   useEffect(() => {
     if (isComplete) {
-      const timer = setTimeout(() => router.push(`/invoices/${params.id}`), 2000);
+      const timer = setTimeout(() => router.push(`/invoices/${invoiceId}`), 2000);
       return () => clearTimeout(timer);
     }
-  }, [isComplete, params.id, router]);
+  }, [isComplete, invoiceId, router]);
 
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;

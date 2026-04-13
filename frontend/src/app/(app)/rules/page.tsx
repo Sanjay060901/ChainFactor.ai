@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
-import { DEMO_RULES } from "@/lib/demo-data";
 
 interface RuleCondition {
   field: string;
@@ -38,7 +37,7 @@ export default function RulesPage() {
       setRules(res.rules);
       setDefaultAction(res.default_action);
     } catch {
-      setRules(DEMO_RULES as Rule[]);
+      setRules([]);
       setDefaultAction("flag_for_review");
     }
     setLoading(false);

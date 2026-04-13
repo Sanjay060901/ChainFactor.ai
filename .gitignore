@@ -48,6 +48,8 @@ docker-compose.override.yml
 
 # Database
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 
 # Logs
@@ -72,6 +74,10 @@ coverage/
 !*.tfvars.example
 .terraform.lock.hcl
 crash.log
+tfplan
+
+# Temp files
+body.json
 
 # Secrets (never commit)
 *.pem
@@ -79,3 +85,19 @@ crash.log
 credentials.json
 secrets.json
 .dmux/
+
+# Build artifacts & deployment zips
+*.zip
+backend-source.zip
+backend-deploy.zip
+
+# TypeScript build info
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# CloudFront / deployment outputs
+cf-frontend-dist.json
+
+# Generated scripts (not needed in repo)
+generate_sample_invoices.py
+fund_wallets.py

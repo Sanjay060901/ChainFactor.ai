@@ -1,5 +1,6 @@
 """ChainFactor AI - FastAPI Application Entry Point."""
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Query, WebSocket
@@ -9,11 +10,28 @@ from app.api.v1.router import api_router
 from app.config import settings
 from app.modules.ws.handler import websocket_invoice_handler
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
-    # Migrations run via entrypoint.sh before uvicorn starts
+    # For SQLite: create tables directly (Alembic migrations are PG-specific)
+    db_url = settings.get_database_url()
+    if db_url.startswith("sqlite"):
+        from app.database import engine
+        from app.models import Base  # noqa: F401 — triggers all model imports
+
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("SQLite tables created via create_all")
+
+        # Auto-seed demo data
+        from app.seed import seed_database
+
+        await seed_database()
+        logger.info("Database seeded with demo data")
+
     yield
     # Shutdown: close connections
 

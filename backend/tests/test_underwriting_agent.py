@@ -43,7 +43,7 @@ class TestUnderwritingAgentConfig:
 class TestUnderwritingAgentCreation:
     """Verify create_underwriting_agent() returns a properly configured Agent."""
 
-    @patch("app.modules.agents.underwriting_agent.get_bedrock_model")
+    @patch("app.modules.agents.underwriting_agent.get_model_for_agent")
     def test_create_returns_agent(self, mock_get_model):
         """create_underwriting_agent() should return a Strands Agent instance."""
         mock_get_model.return_value = MagicMock()
@@ -51,7 +51,7 @@ class TestUnderwritingAgentCreation:
         # Strands Agent has a name attribute
         assert agent.name == "underwriting_agent"
 
-    @patch("app.modules.agents.underwriting_agent.get_bedrock_model")
+    @patch("app.modules.agents.underwriting_agent.get_model_for_agent")
     def test_agent_has_system_prompt(self, mock_get_model):
         """Agent should have a non-empty system_prompt."""
         mock_get_model.return_value = MagicMock()
@@ -59,7 +59,7 @@ class TestUnderwritingAgentCreation:
         assert agent.system_prompt is not None
         assert len(agent.system_prompt) > 0
 
-    @patch("app.modules.agents.underwriting_agent.get_bedrock_model")
+    @patch("app.modules.agents.underwriting_agent.get_model_for_agent")
     def test_agent_has_tool_caller(self, mock_get_model):
         """Agent should have a tool attribute (Strands _ToolCaller) after creation."""
         mock_get_model.return_value = MagicMock()

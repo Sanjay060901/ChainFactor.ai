@@ -112,7 +112,7 @@ class TestCrossValidateOutputs:
     def test_consistent_data_returns_consistent_true(self):
         """All consistent data should yield consistent=true with no discrepancies."""
         data = _make_consistent_data()
-        result = cross_validate_outputs(**data, _demo=False)
+        result = cross_validate_outputs(**data)
         assert result["consistent"] is True
         assert result["discrepancies"] == []
         assert result["confidence"] > 0.9
@@ -120,7 +120,7 @@ class TestCrossValidateOutputs:
     def test_inconsistent_data_catches_discrepancies(self):
         """Inconsistent data should yield consistent=false with discrepancies listed."""
         data = _make_inconsistent_data()
-        result = cross_validate_outputs(**data, _demo=False)
+        result = cross_validate_outputs(**data)
         assert result["consistent"] is False
         assert len(result["discrepancies"]) >= 2
         assert result["confidence"] < 0.9
@@ -129,7 +129,7 @@ class TestCrossValidateOutputs:
         """Should detect when extracted and validated amounts differ."""
         data = _make_consistent_data()
         data["validation_result"]["total_amount"] = 999999.99
-        result = cross_validate_outputs(**data, _demo=False)
+        result = cross_validate_outputs(**data)
         assert result["consistent"] is False
         assert any("Amount mismatch" in d for d in result["discrepancies"])
 
@@ -137,7 +137,7 @@ class TestCrossValidateOutputs:
         """Should detect GSTIN active but company inactive."""
         data = _make_consistent_data()
         data["company_info"]["status"] = "cancelled"
-        result = cross_validate_outputs(**data, _demo=False)
+        result = cross_validate_outputs(**data)
         assert result["consistent"] is False
         assert any("company status" in d for d in result["discrepancies"])
 
@@ -146,7 +146,7 @@ class TestCrossValidateOutputs:
         data = _make_consistent_data()
         data["fraud_result"]["overall_result"] = "fail"
         data["risk_assessment"]["risk_score"] = 80
-        result = cross_validate_outputs(**data, _demo=False)
+        result = cross_validate_outputs(**data)
         assert result["consistent"] is False
         assert any("Fraud" in d for d in result["discrepancies"])
 
@@ -155,14 +155,14 @@ class TestCrossValidateOutputs:
         data = _make_consistent_data()
         data["buyer_intel"]["payment_history"] = "slow_payer"
         data["credit_score"]["cibil_score"] = 850
-        result = cross_validate_outputs(**data, _demo=False)
+        result = cross_validate_outputs(**data)
         assert result["consistent"] is False
         assert any("CIBIL" in d for d in result["discrepancies"])
 
     def test_return_shape(self):
         """Return dict must have exactly consistent, discrepancies, confidence."""
         data = _make_consistent_data()
-        result = cross_validate_outputs(**data, _demo=False)
+        result = cross_validate_outputs(**data)
         assert set(result.keys()) == {"consistent", "discrepancies", "confidence"}
         assert isinstance(result["consistent"], bool)
         assert isinstance(result["discrepancies"], list)
@@ -172,25 +172,13 @@ class TestCrossValidateOutputs:
 class TestCrossValidateDemo:
     """Demo mode for cross_validate_outputs."""
 
-    def test_demo_returns_consistent(self):
-        data = _make_inconsistent_data()
-        result = cross_validate_outputs(**data, _demo=True)
-        assert result["consistent"] is True
-        assert result["discrepancies"] == []
-        assert result["confidence"] == 0.95
-
-
-# ===========================================================================
-# get_seller_rules
-# ===========================================================================
-
 
 class TestGetSellerRules:
     """Test seller rules lookup by seller_id prefix."""
 
     def test_seller_1_returns_permissive(self):
         """seller_1* prefix should return permissive rules."""
-        result = get_seller_rules(seller_id="seller_1_tata", _demo=False)
+        result = get_seller_rules(seller_id="seller_1_tata")
         assert result["max_amount"] == 1000000.0
         assert result["min_risk_score"] == 30
         assert result["min_cibil_score"] == 600
@@ -199,7 +187,7 @@ class TestGetSellerRules:
 
     def test_seller_2_returns_strict(self):
         """seller_2* prefix should return strict rules."""
-        result = get_seller_rules(seller_id="seller_2_adani", _demo=False)
+        result = get_seller_rules(seller_id="seller_2_adani")
         assert result["max_amount"] == 200000.0
         assert result["min_risk_score"] == 20
         assert result["min_cibil_score"] == 750
@@ -208,7 +196,7 @@ class TestGetSellerRules:
 
     def test_unknown_seller_returns_moderate(self):
         """Unknown seller_id should return moderate defaults."""
-        result = get_seller_rules(seller_id="some_other_seller", _demo=False)
+        result = get_seller_rules(seller_id="some_other_seller")
         assert result["max_amount"] == 500000.0
         assert result["min_risk_score"] == 40
         assert result["min_cibil_score"] == 650
@@ -216,7 +204,7 @@ class TestGetSellerRules:
         assert result["auto_approve_enabled"] is True
 
     def test_return_shape(self):
-        result = get_seller_rules(seller_id="seller_1_any", _demo=False)
+        result = get_seller_rules(seller_id="seller_1_any")
         expected_keys = {
             "max_amount",
             "min_risk_score",
@@ -230,45 +218,34 @@ class TestGetSellerRules:
 class TestGetSellerRulesDemo:
     """Demo mode for get_seller_rules."""
 
-    def test_demo_returns_permissive(self):
-        """Demo mode should return permissive rules regardless of seller_id."""
-        result = get_seller_rules(seller_id="seller_2_strict", _demo=True)
-        assert result["max_amount"] == 1000000.0
-        assert result["min_cibil_score"] == 600
-
-
-# ===========================================================================
-# get_invoice_data
-# ===========================================================================
-
 
 class TestGetInvoiceData:
     """Test invoice data retrieval."""
 
     def test_known_invoice_001(self):
-        result = get_invoice_data(invoice_id="demo-invoice-001", _demo=False)
+        result = get_invoice_data(invoice_id="demo-invoice-001")
         assert result["invoice_id"] == "demo-invoice-001"
         assert result["amount"] == 501500.00
         assert result["seller_id"] == "seller_1_tata"
 
     def test_known_invoice_002(self):
-        result = get_invoice_data(invoice_id="demo-invoice-002", _demo=False)
+        result = get_invoice_data(invoice_id="demo-invoice-002")
         assert result["invoice_id"] == "demo-invoice-002"
         assert result["amount"] == 150000.00
 
     def test_known_invoice_003(self):
-        result = get_invoice_data(invoice_id="demo-invoice-003", _demo=False)
+        result = get_invoice_data(invoice_id="demo-invoice-003")
         assert result["invoice_id"] == "demo-invoice-003"
         assert result["amount"] == 7500000.00
 
     def test_unknown_invoice_returns_generic(self):
-        result = get_invoice_data(invoice_id="unknown-123", _demo=False)
+        result = get_invoice_data(invoice_id="unknown-123")
         assert result["invoice_id"] == "unknown-123"
         assert result["amount"] == 250000.00
         assert result["seller_id"] == "seller_unknown"
 
     def test_return_shape(self):
-        result = get_invoice_data(invoice_id="demo-invoice-001", _demo=False)
+        result = get_invoice_data(invoice_id="demo-invoice-001")
         expected_keys = {
             "invoice_id",
             "status",
@@ -283,17 +260,6 @@ class TestGetInvoiceData:
 
 class TestGetInvoiceDataDemo:
     """Demo mode for get_invoice_data."""
-
-    def test_demo_returns_invoice_001(self):
-        """Demo mode always returns demo-invoice-001 regardless of input."""
-        result = get_invoice_data(invoice_id="unknown-xyz", _demo=True)
-        assert result["invoice_id"] == "demo-invoice-001"
-        assert result["amount"] == 501500.00
-
-
-# ===========================================================================
-# approve_invoice
-# ===========================================================================
 
 
 class TestApproveInvoice:

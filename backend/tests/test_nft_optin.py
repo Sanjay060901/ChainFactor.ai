@@ -44,6 +44,9 @@ def _mock_invoice(status: str = "approved", has_nft: bool = True) -> MagicMock:
     inv.id = uuid.UUID(INVOICE_ID)
     inv.user_id = USER_ID
     inv.status = status
+    inv.invoice_number = "INV-TEST-001"
+    inv.extracted_data = {}
+    inv.risk_score = 82
     inv.nft_record = _mock_nft() if has_nft else None
     return inv
 
@@ -208,8 +211,8 @@ async def test_optin_endpoint_returns_409_if_status_is_rejected(client: AsyncCli
 
 
 @pytest.mark.asyncio
-async def test_optin_endpoint_returns_404_if_no_nft_minted(client: AsyncClient):
-    """POST /invoices/{id}/nft/opt-in returns 404 if NFT has not been minted yet."""
+async def test_optin_endpoint_backfills_nft_if_not_minted(client: AsyncClient):
+    """POST /invoices/{id}/nft/opt-in backfills a demo NFT when none exists."""
     mock_inv = _mock_invoice(status="approved", has_nft=False)
 
     with patch(
@@ -221,26 +224,35 @@ async def test_optin_endpoint_returns_404_if_no_nft_minted(client: AsyncClient):
             json={"wallet_address": WALLET_ADDRESS},
         )
 
-    assert response.status_code == 404
-    assert "nft" in response.json()["detail"].lower()
+    # Backfill creates a demo NFT record and returns 200 with opt-in txn
+    assert response.status_code == 200
+    data = response.json()
+    assert data["asset_id"] == 757705539  # demo asset ID
+    assert data["unsigned_txn"]  # non-empty base64
 
 
 @pytest.mark.asyncio
-async def test_optin_endpoint_returns_404_if_nft_has_no_asset_id(client: AsyncClient):
-    """POST /invoices/{id}/nft/opt-in returns 404 if NFT record exists but asset_id is None."""
+async def test_optin_endpoint_backfills_nft_when_asset_id_is_none(client: AsyncClient):
+    """POST /invoices/{id}/nft/opt-in backfills demo NFT when asset_id is None."""
+    unique_inv_id = "aabbccdd-1111-0000-0000-aabbccdd2222"  # unique to avoid DB conflict
     mock_inv = _mock_invoice(status="approved", has_nft=True)
+    mock_inv.id = uuid.UUID(unique_inv_id)
     mock_inv.nft_record.asset_id = None  # NFT record exists but not yet assigned an ASA
+    mock_inv.nft_record.mint_txn_id = None  # No mint txn either
 
     with patch(
         "app.modules.invoices.router._get_invoice_for_user",
         new=AsyncMock(return_value=mock_inv),
     ):
         response = await client.post(
-            f"/api/v1/invoices/{INVOICE_ID}/nft/opt-in",
+            f"/api/v1/invoices/{unique_inv_id}/nft/opt-in",
             json={"wallet_address": WALLET_ADDRESS},
         )
 
-    assert response.status_code == 404
+    # Backfill creates a demo NFT record and returns 200
+    assert response.status_code == 200
+    data = response.json()
+    assert data["asset_id"] == 757705539
 
 
 @pytest.mark.asyncio

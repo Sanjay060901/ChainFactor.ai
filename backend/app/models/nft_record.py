@@ -3,17 +3,17 @@
 import uuid
 
 from sqlalchemy import BigInteger, ForeignKey, String
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
+from app.models.compat import GUID, JSONType
 
 
 class NFTRecord(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "nft_records"
 
     invoice_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("invoices.id"), unique=True, nullable=False
+        GUID(), ForeignKey("invoices.id"), unique=True, nullable=False
     )
 
     # Algorand ASA details
@@ -26,7 +26,7 @@ class NFTRecord(Base, UUIDMixin, TimestampMixin):
     claimed_by_wallet: Mapped[str | None] = mapped_column(String(58), nullable=True)
 
     # ARC-69 metadata snapshot ("metadata" is reserved by SQLAlchemy DeclarativeBase)
-    arc69_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    arc69_metadata: Mapped[dict | None] = mapped_column(JSONType(), nullable=True)
 
     # Status: minted, opt_in_pending, claimed, failed
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="minted")

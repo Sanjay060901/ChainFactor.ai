@@ -1,7 +1,7 @@
 """Tests for WebSocket server (Feature 4.2).
 
 Covers: Redis bridge publish/subscribe, WebSocket handler, heartbeat,
-client disconnect, event format validation, and DEMO_MODE fallback.
+client disconnect, event format validation.
 """
 
 import json
@@ -220,102 +220,7 @@ class TestEventFormat:
 
 
 # ---------------------------------------------------------------------------
-# WebSocket handler integration tests (DEMO_MODE)
-# ---------------------------------------------------------------------------
-
-
-class TestWebSocketHandlerDemo:
-    """Test the WebSocket handler in DEMO_MODE (no Redis required)."""
-
-    @pytest.mark.asyncio
-    async def test_ws_connect_and_receive_demo_events(self):
-        """In DEMO_MODE the WS handler should yield all 14 step events
-        plus one pipeline_complete event without needing Redis."""
-        from app.main import app
-
-        original_demo = settings.DEMO_MODE
-        settings.DEMO_MODE = True
-
-        try:
-            client = TestClient(app)
-            with client.websocket_connect("/ws/processing/inv_stub_001") as ws:
-                events = []
-                while True:
-                    try:
-                        data = ws.receive_json(mode="text")
-                        events.append(data)
-                        if data.get("type") == "pipeline_complete":
-                            break
-                    except Exception:
-                        break
-
-                # 14 step_complete + 1 pipeline_complete
-                assert len(events) == 15
-
-                # First event is step 1
-                assert events[0]["type"] == "step_complete"
-                assert events[0]["step"] == 1
-                assert events[0]["step_name"] == "extract_invoice"
-
-                # Last event is pipeline_complete
-                assert events[-1]["type"] == "pipeline_complete"
-                assert events[-1]["decision"] == "approved"
-                assert events[-1]["risk_score"] == 82
-        finally:
-            settings.DEMO_MODE = original_demo
-
-    @pytest.mark.asyncio
-    async def test_ws_demo_events_are_valid_schemas(self):
-        """Every step event from demo mode should parse as ProcessingEvent."""
-        from app.main import app
-
-        original_demo = settings.DEMO_MODE
-        settings.DEMO_MODE = True
-
-        try:
-            client = TestClient(app)
-            with client.websocket_connect("/ws/processing/inv_stub_001") as ws:
-                while True:
-                    try:
-                        data = ws.receive_json(mode="text")
-                        if data["type"] == "step_complete":
-                            ProcessingEvent(**data)
-                        elif data["type"] == "pipeline_complete":
-                            PipelineCompleteEvent(**data)
-                            break
-                    except Exception:
-                        break
-        finally:
-            settings.DEMO_MODE = original_demo
-
-    @pytest.mark.asyncio
-    async def test_ws_demo_progress_increases(self):
-        """Progress values should monotonically increase across step events."""
-        from app.main import app
-
-        original_demo = settings.DEMO_MODE
-        settings.DEMO_MODE = True
-
-        try:
-            client = TestClient(app)
-            with client.websocket_connect("/ws/processing/inv_stub_001") as ws:
-                prev_progress = 0.0
-                while True:
-                    try:
-                        data = ws.receive_json(mode="text")
-                        if data["type"] == "step_complete":
-                            assert data["progress"] >= prev_progress
-                            prev_progress = data["progress"]
-                        elif data["type"] == "pipeline_complete":
-                            break
-                    except Exception:
-                        break
-        finally:
-            settings.DEMO_MODE = original_demo
-
-
-# ---------------------------------------------------------------------------
-# WebSocket handler with mocked Redis (non-demo mode)
+# WebSocket handler with mocked Redis
 # ---------------------------------------------------------------------------
 
 
@@ -324,12 +229,9 @@ class TestWebSocketHandlerLive:
 
     @pytest.mark.asyncio
     async def test_ws_forwards_redis_events_to_client(self):
-        """In live mode, events published to Redis should be forwarded
+        """Events published to Redis should be forwarded
         to the connected WebSocket client."""
         from app.main import app
-
-        original_demo = settings.DEMO_MODE
-        settings.DEMO_MODE = False
 
         event = {
             "type": "step_complete",
@@ -356,28 +258,25 @@ class TestWebSocketHandlerLive:
             yield event
             yield final
 
-        try:
-            with patch(
-                "app.modules.ws.handler.subscribe_events",
-                side_effect=mock_subscribe,
-            ):
-                client = TestClient(app)
-                with client.websocket_connect("/ws/processing/inv_test_001") as ws:
-                    received = []
-                    while True:
-                        try:
-                            data = ws.receive_json(mode="text")
-                            received.append(data)
-                            if data.get("type") == "pipeline_complete":
-                                break
-                        except Exception:
+        with patch(
+            "app.modules.ws.handler.subscribe_events",
+            side_effect=mock_subscribe,
+        ):
+            client = TestClient(app)
+            with client.websocket_connect("/ws/processing/inv_test_001") as ws:
+                received = []
+                while True:
+                    try:
+                        data = ws.receive_json(mode="text")
+                        received.append(data)
+                        if data.get("type") == "pipeline_complete":
                             break
+                    except Exception:
+                        break
 
-                    assert len(received) == 2
-                    assert received[0]["step_name"] == "extract_invoice"
-                    assert received[1]["type"] == "pipeline_complete"
-        finally:
-            settings.DEMO_MODE = original_demo
+                assert len(received) == 2
+                assert received[0]["step_name"] == "extract_invoice"
+                assert received[1]["type"] == "pipeline_complete"
 
 
 # ---------------------------------------------------------------------------

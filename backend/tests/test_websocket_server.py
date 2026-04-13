@@ -1,12 +1,9 @@
 """Feature 4.2: WebSocket server -- additional integration tests.
 
 This file covers areas not tested in test_websocket.py:
-  - WebSocket connection acceptance (basic handshake)
   - SSE endpoint content-type header
   - SSE endpoint streams valid data: events
   - Reconnection replay via EventBuffer (in-process)
-  - Handler streams from DB agent_traces on reconnection (mocked)
-  - Token query param accepted without error
   - Pipeline_complete stops the stream
   - Concurrent connections to different invoice_ids are isolated
 
@@ -61,95 +58,6 @@ def _make_complete_event(invoice_id: str = "inv_test") -> dict:
 # ---------------------------------------------------------------------------
 # WebSocket connection acceptance
 # ---------------------------------------------------------------------------
-
-
-class TestWebSocketAcceptance:
-    """WebSocket handshake and basic connectivity."""
-
-    def test_ws_accepts_connection_in_demo_mode(self):
-        """WebSocket should accept the connection and return events in DEMO_MODE."""
-        from app.main import app
-
-        original = settings.DEMO_MODE
-        settings.DEMO_MODE = True
-        try:
-            client = TestClient(app)
-            with client.websocket_connect("/ws/processing/inv_demo") as ws:
-                # First message should arrive immediately
-                data = ws.receive_json(mode="text")
-                assert data is not None
-                assert "type" in data
-        finally:
-            settings.DEMO_MODE = original
-
-    def test_ws_accepts_token_query_param(self):
-        """WebSocket with token= query param should be accepted without error."""
-        from app.main import app
-
-        original = settings.DEMO_MODE
-        settings.DEMO_MODE = True
-        try:
-            client = TestClient(app)
-            with client.websocket_connect(
-                "/ws/processing/inv_token_test?token=fake.jwt.token"
-            ) as ws:
-                data = ws.receive_json(mode="text")
-                assert data is not None
-        finally:
-            settings.DEMO_MODE = original
-
-    def test_ws_demo_delivers_all_15_events(self):
-        """DEMO_MODE must yield exactly 14 step events + 1 pipeline_complete."""
-        from app.main import app
-
-        original = settings.DEMO_MODE
-        settings.DEMO_MODE = True
-        try:
-            client = TestClient(app)
-            with client.websocket_connect("/ws/processing/inv_stub_001") as ws:
-                events = []
-                while True:
-                    try:
-                        data = ws.receive_json(mode="text")
-                        events.append(data)
-                        if data.get("type") == "pipeline_complete":
-                            break
-                    except Exception:
-                        break
-
-                step_events = [e for e in events if e.get("type") == "step_complete"]
-                complete_events = [
-                    e for e in events if e.get("type") == "pipeline_complete"
-                ]
-                assert len(step_events) == 14
-                assert len(complete_events) == 1
-        finally:
-            settings.DEMO_MODE = original
-
-    def test_ws_pipeline_complete_is_last_event(self):
-        """pipeline_complete must be the final event, not mid-stream."""
-        from app.main import app
-
-        original = settings.DEMO_MODE
-        settings.DEMO_MODE = True
-        try:
-            client = TestClient(app)
-            with client.websocket_connect("/ws/processing/inv_stub_001") as ws:
-                events = []
-                while True:
-                    try:
-                        data = ws.receive_json(mode="text")
-                        events.append(data)
-                        if data.get("type") == "pipeline_complete":
-                            break
-                    except Exception:
-                        break
-
-                assert events[-1]["type"] == "pipeline_complete"
-                for e in events[:-1]:
-                    assert e["type"] != "pipeline_complete"
-        finally:
-            settings.DEMO_MODE = original
 
 
 # ---------------------------------------------------------------------------
@@ -223,8 +131,8 @@ class TestSSEEndpoint:
                         break
 
         assert first_event["type"] == "step_complete"
-        assert first_event["step"] == 1
-        assert first_event["step_name"] == "extract_invoice"
+        assert first_event["step_number"] == 1
+        assert first_event["tool"] == "extract_invoice"
 
 
 # ---------------------------------------------------------------------------
@@ -242,9 +150,6 @@ class TestReconnectionReplay:
         from app.main import app
         from app.modules.ws import handler as ws_handler
 
-        original = settings.DEMO_MODE
-        settings.DEMO_MODE = False
-
         step_event = _make_step_event(1)
         complete_event = _make_complete_event("inv_replay")
 
@@ -252,26 +157,24 @@ class TestReconnectionReplay:
         ws_handler._event_buffer.add("inv_replay", step_event)
         ws_handler._event_buffer.add("inv_replay", complete_event)
 
-        try:
-            client = TestClient(app)
-            with client.websocket_connect("/ws/processing/inv_replay") as ws:
-                received = []
-                while True:
-                    try:
-                        data = ws.receive_json(mode="text")
-                        received.append(data)
-                        if data.get("type") == "pipeline_complete":
-                            break
-                    except Exception:
+        client = TestClient(app)
+        with client.websocket_connect("/ws/processing/inv_replay") as ws:
+            received = []
+            while True:
+                try:
+                    data = ws.receive_json(mode="text")
+                    received.append(data)
+                    if data.get("type") == "pipeline_complete":
                         break
+                except Exception:
+                    break
 
-                # Both buffered events should be replayed without Redis
-                assert len(received) == 2
-                assert received[0] == step_event
-                assert received[1] == complete_event
-        finally:
-            settings.DEMO_MODE = original
-            ws_handler._event_buffer.clear("inv_replay")
+            # Both buffered events should be replayed without Redis
+            assert len(received) == 2
+            assert received[0] == step_event
+            assert received[1] == complete_event
+
+        ws_handler._event_buffer.clear("inv_replay")
 
     def test_buffer_cleared_state_returns_no_replay(self):
         """If the buffer is empty, no replay events should be sent."""
@@ -297,9 +200,6 @@ class TestLiveModeEventForwarding:
         pipeline_complete."""
         from app.main import app
 
-        original = settings.DEMO_MODE
-        settings.DEMO_MODE = False
-
         step = _make_step_event(1)
         complete = _make_complete_event("inv_live_fwd")
 
@@ -307,36 +207,30 @@ class TestLiveModeEventForwarding:
             yield step
             yield complete
 
-        try:
-            with patch(
-                "app.modules.ws.handler.subscribe_events",
-                side_effect=mock_subscribe,
-            ):
-                client = TestClient(app)
-                with client.websocket_connect("/ws/processing/inv_live_fwd") as ws:
-                    received = []
-                    while True:
-                        try:
-                            data = ws.receive_json(mode="text")
-                            received.append(data)
-                            if data.get("type") == "pipeline_complete":
-                                break
-                        except Exception:
+        with patch(
+            "app.modules.ws.handler.subscribe_events",
+            side_effect=mock_subscribe,
+        ):
+            client = TestClient(app)
+            with client.websocket_connect("/ws/processing/inv_live_fwd") as ws:
+                received = []
+                while True:
+                    try:
+                        data = ws.receive_json(mode="text")
+                        received.append(data)
+                        if data.get("type") == "pipeline_complete":
                             break
+                    except Exception:
+                        break
 
-                    assert len(received) == 2
-                    assert received[0]["type"] == "step_complete"
-                    assert received[1]["type"] == "pipeline_complete"
-        finally:
-            settings.DEMO_MODE = original
+                assert len(received) == 2
+                assert received[0]["type"] == "step_complete"
+                assert received[1]["type"] == "pipeline_complete"
 
     def test_live_mode_stops_cleanly_after_pipeline_complete(self):
         """After pipeline_complete, no further events should be forwarded even
         if the Redis subscription yields more messages."""
         from app.main import app
-
-        original = settings.DEMO_MODE
-        settings.DEMO_MODE = False
 
         complete = _make_complete_event("inv_stop")
         extra = _make_step_event(99)  # Should never be forwarded
@@ -345,28 +239,25 @@ class TestLiveModeEventForwarding:
             yield complete
             yield extra  # This should not reach the client
 
-        try:
-            with patch(
-                "app.modules.ws.handler.subscribe_events",
-                side_effect=mock_subscribe,
-            ):
-                client = TestClient(app)
-                with client.websocket_connect("/ws/processing/inv_stop") as ws:
-                    received = []
-                    while True:
-                        try:
-                            data = ws.receive_json(mode="text")
-                            received.append(data)
-                            if data.get("type") == "pipeline_complete":
-                                break
-                        except Exception:
+        with patch(
+            "app.modules.ws.handler.subscribe_events",
+            side_effect=mock_subscribe,
+        ):
+            client = TestClient(app)
+            with client.websocket_connect("/ws/processing/inv_stop") as ws:
+                received = []
+                while True:
+                    try:
+                        data = ws.receive_json(mode="text")
+                        received.append(data)
+                        if data.get("type") == "pipeline_complete":
                             break
+                    except Exception:
+                        break
 
-                    # Only the pipeline_complete should be received
-                    assert len(received) == 1
-                    assert received[0]["type"] == "pipeline_complete"
-        finally:
-            settings.DEMO_MODE = original
+                # Only the pipeline_complete should be received
+                assert len(received) == 1
+                assert received[0]["type"] == "pipeline_complete"
 
 
 # ---------------------------------------------------------------------------

@@ -24,6 +24,7 @@ interface AuthState {
     gstin: string;
   }) => Promise<void>;
   logout: () => void;
+  deleteAccount: () => Promise<void>;
   error: string | null;
 }
 
@@ -109,6 +110,14 @@ export function useAuthState(): AuthState {
     setUser(null);
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    await api.deleteAccount();
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user");
+    setUser(null);
+  }, []);
+
   return {
     user,
     isAuthenticated: !!user,
@@ -116,6 +125,7 @@ export function useAuthState(): AuthState {
     login,
     register,
     logout,
+    deleteAccount,
     error,
   };
 }

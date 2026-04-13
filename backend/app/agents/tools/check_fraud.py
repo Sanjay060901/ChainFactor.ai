@@ -16,14 +16,11 @@ in the top-level ``flags`` list.
 
 Dependencies:
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE)
 """
 
 import logging
 
 from strands import tool
-
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -47,22 +44,6 @@ _LAYER_NAMES = [
     "Entity Verification",
     "Cross-Reference",
 ]
-
-# Pre-computed demo result -- returned when DEMO_MODE=True with no logic applied
-_DEMO_RESULT: dict = {
-    "overall": "pass",
-    "confidence": 97.0,
-    "flags": [],
-    "layers": [
-        {
-            "name": name,
-            "result": "pass",
-            "confidence": 97.0,
-            "detail": "Demo mode: pre-computed pass",
-        }
-        for name in _LAYER_NAMES
-    ],
-}
 
 
 # ---------------------------------------------------------------------------
@@ -362,22 +343,10 @@ def check_fraud(extracted_data: dict, gstin_verification: dict) -> dict:
         4. Entity Verification   -- GSTIN active status and blocklist check
         5. Cross-Reference       -- mock duplicate-invoice detection
 
-    In DEMO_MODE, returns a pre-computed all-pass result with no logic executed.
-
     Args:
         extracted_data: Structured invoice dict from extract_invoice tool.
         gstin_verification: GSTIN verification dict from verify_gstn tool.
     """
-    if settings.DEMO_MODE:
-        logger.info("DEMO_MODE: returning pre-computed fraud detection result")
-        # Return a fresh copy so callers cannot mutate the module-level constant
-        return {
-            "overall": _DEMO_RESULT["overall"],
-            "confidence": _DEMO_RESULT["confidence"],
-            "flags": list(_DEMO_RESULT["flags"]),
-            "layers": [dict(layer) for layer in _DEMO_RESULT["layers"]],
-        }
-
     logger.info(
         "Running 5-layer fraud detection on invoice %s",
         extracted_data.get("invoice_number", "<unknown>"),

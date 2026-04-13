@@ -14,11 +14,23 @@ const pages = [
   { href: "/dashboard", label: "Dashboard", icon: "📊" },
   { href: "/invoices", label: "Invoices", icon: "📋" },
   { href: "/invoices/upload", label: "Upload", icon: "📤" },
-  { href: "/invoices/inv_stub_001", label: "Invoice Detail", icon: "🔍" },
-  { href: "/invoices/inv_stub_001/processing", label: "Processing", icon: "⚙️" },
-  { href: "/invoices/inv_stub_001/claim", label: "Claim NFT", icon: "🎨" },
-  { href: "/invoices/inv_stub_001/audit", label: "Audit Trail", icon: "📜" },
   { href: "/rules", label: "Rules", icon: "⚖️" },
+  { href: "/settings", label: "AI Settings", icon: "🧠" },
+];
+
+const howToSteps = [
+  { step: "1", title: "Connect Wallet", desc: "Link your Pera or Defly Algorand wallet to get started.", icon: "🔗" },
+  { step: "2", title: "Upload Invoice", desc: "Upload a GST invoice PDF (max 5MB). Our AI extracts all data automatically.", icon: "📤" },
+  { step: "3", title: "AI Analysis", desc: "11 AI tools run in sequence: OCR, validation, GST compliance, 5-layer fraud detection, GSTIN verification, credit scoring, and risk assessment.", icon: "🤖" },
+  { step: "4", title: "Underwriting", desc: "The Underwriting Agent cross-validates all signals and makes an autonomous approve/reject/flag decision.", icon: "⚖️" },
+  { step: "5", title: "Claim NFT", desc: "Approved invoices are minted as ARC-69 NFTs on Algorand testnet. Opt-in and claim your verifiable asset.", icon: "🎨" },
+];
+
+const targetAudience = [
+  { title: "Indian SMEs", desc: "Small and medium enterprises seeking faster invoice financing with transparent risk scoring.", icon: "🏢" },
+  { title: "Invoice Financiers", desc: "NBFCs, banks, and fintech platforms looking for AI-powered due diligence on invoice portfolios.", icon: "🏦" },
+  { title: "GST-Registered Businesses", desc: "Any GSTIN-registered business wanting to verify invoice authenticity and buyer reliability.", icon: "📋" },
+  { title: "Blockchain Enthusiasts", desc: "Developers and innovators exploring real-world DeFi applications on Algorand.", icon: "⛓️" },
 ];
 
 export default function Home() {
@@ -152,18 +164,76 @@ export default function Home() {
           </motion.div>
         </motion.div>
 
-        {/* Demo Navigation */}
+        {/* How To Use */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 2 }}
+          transition={{ duration: 0.6, delay: 1.6 }}
+          className="mt-24 w-full max-w-5xl"
+        >
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-blue-400 mb-8">
+            How It Works
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-5">
+            {howToSteps.map((s, i) => (
+              <motion.div
+                key={s.step}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.7 + i * 0.1 }}
+                className="glass-card p-5 text-center relative"
+              >
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 h-6 w-6 rounded-full bg-blue-500/30 border border-blue-500/50 flex items-center justify-center text-xs font-bold text-blue-300">
+                  {s.step}
+                </div>
+                <div className="text-2xl mt-2">{s.icon}</div>
+                <h3 className="mt-2 text-sm font-semibold text-slate-200">{s.title}</h3>
+                <p className="mt-1 text-xs text-slate-400 leading-relaxed">{s.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Target Audience */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 2.2 }}
+          className="mt-20 w-full max-w-4xl"
+        >
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-blue-400 mb-8">
+            Who Is This For?
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {targetAudience.map((t, i) => (
+              <motion.div
+                key={t.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 2.3 + i * 0.1 }}
+                whileHover={{ scale: 1.05 }}
+                className="glass-card p-6 text-center"
+              >
+                <div className="text-3xl">{t.icon}</div>
+                <h3 className="mt-3 text-sm font-semibold text-slate-200">{t.title}</h3>
+                <p className="mt-2 text-xs text-slate-400 leading-relaxed">{t.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Quick Navigation */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 2.7 }}
           className="mt-20 w-full max-w-3xl"
         >
           <div className="glass-card p-8">
             <p className="text-center text-xs font-semibold uppercase tracking-widest text-blue-400">
-              Demo — Browse All Pages
+              Quick Navigation
             </p>
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
               {pages.map((p) => (
                 <motion.div key={p.href} whileHover={{ scale: 1.08, y: -4 }} whileTap={{ scale: 0.95 }}>
                   <Link

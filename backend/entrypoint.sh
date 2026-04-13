@@ -2,8 +2,7 @@
 set -e
 
 echo "Running database migrations..."
-python -m alembic upgrade head
-echo "Migrations complete."
+python -m alembic upgrade head || echo "WARN: Migrations failed (non-fatal, continuing...)"
 
 echo "Running seed data..."
 python -m app.seed || echo "Seed skipped (already seeded or error)"

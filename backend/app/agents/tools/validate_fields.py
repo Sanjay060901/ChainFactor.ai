@@ -12,7 +12,6 @@ Demo mode: returns pre-computed success with no validation.
 
 Dependencies:
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE)
 """
 
 import logging
@@ -20,8 +19,6 @@ import re
 from datetime import date, datetime
 
 from strands import tool
-
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -258,18 +255,10 @@ def validate_fields(extracted_data: dict) -> dict:
     """Validate the completeness and correctness of extracted invoice fields.
 
     Checks required fields, math consistency, GSTIN format, and date validity.
-    In DEMO_MODE, returns pre-computed success with no validation performed.
 
     Args:
         extracted_data: Structured invoice dict produced by extract_invoice tool.
     """
-    # Demo mode: skip all validation and return clean success
-    if settings.DEMO_MODE:
-        logger.info(
-            "DEMO_MODE: skipping field validation, returning pre-computed success"
-        )
-        return {"is_valid": True, "errors": [], "warnings": []}
-
     logger.info("Validating extracted invoice fields")
 
     errors: list[str] = []

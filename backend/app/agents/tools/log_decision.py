@@ -6,7 +6,6 @@ in PostgreSQL and stream via WebSocket.
 
 Dependencies:
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE)
 """
 
 import logging
@@ -14,8 +13,6 @@ import uuid
 from datetime import datetime, timezone
 
 from strands import tool
-
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -54,17 +51,14 @@ def log_decision(
         "timestamp": timestamp,
     }
 
-    if settings.DEMO_MODE:
-        logger.info("DEMO_MODE: log_decision for %s, trace_id=%s", invoice_id, trace_id)
-    else:
-        logger.info(
-            "Decision logged: invoice=%s, decision=%s, trace_id=%s, "
-            "reasoning_length=%d, signals_count=%d",
-            invoice_id,
-            decision,
-            trace_id,
-            len(reasoning_trace),
-            len(all_signals),
-        )
+    logger.info(
+        "Decision logged: invoice=%s, decision=%s, trace_id=%s, "
+        "reasoning_length=%d, signals_count=%d",
+        invoice_id,
+        decision,
+        trace_id,
+        len(reasoning_trace),
+        len(all_signals),
+    )
 
     return log_record

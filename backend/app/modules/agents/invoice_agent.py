@@ -30,7 +30,7 @@ from app.agents.tools.mint_nft import _mint_nft_tool
 from app.agents.tools.validate_fields import validate_fields
 from app.agents.tools.validate_gst_compliance import validate_gst_compliance
 from app.agents.tools.verify_gstn import _verify_gstn_tool
-from app.modules.agents.config import SONNET_MODEL_ID, get_bedrock_model
+from app.modules.agents.config import INVOICE_AGENT_CONFIG, get_model_for_agent
 
 INVOICE_AGENT_SYSTEM_PROMPT = """You are the Invoice Processing Agent for ChainFactor AI, an AI-powered invoice financing platform for Indian SMEs on the Algorand blockchain.
 
@@ -77,12 +77,13 @@ INVOICE_AGENT_TOOLS: list = [
 
 def create_invoice_processing_agent() -> Agent:
     """Create and return the Invoice Processing Agent."""
-    model = get_bedrock_model(SONNET_MODEL_ID)
+    config = INVOICE_AGENT_CONFIG
+    model = get_model_for_agent(config)
 
     return Agent(
         model=model,
-        name="invoice_processing_agent",
-        description="Processes uploaded invoices through a 10-step analysis pipeline including OCR, validation, fraud detection, and risk scoring.",
+        name=config.name,
+        description=config.description,
         system_prompt=INVOICE_AGENT_SYSTEM_PROMPT,
         tools=INVOICE_AGENT_TOOLS,
     )

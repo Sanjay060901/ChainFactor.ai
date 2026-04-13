@@ -4,7 +4,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
-import { DEMO_INVOICES } from "@/lib/demo-data";
 
 interface Invoice {
   id: string;
@@ -52,6 +51,7 @@ export default function InvoicesPage() {
   const [pages, setPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -67,15 +67,8 @@ export default function InvoicesPage() {
       setTotal(res.total);
       setPages(res.pages);
     } catch {
-      // fallback to demo data
-      let demo = DEMO_INVOICES as Invoice[];
-      if (statusFilter) demo = demo.filter((inv) => inv.status === statusFilter);
-      if (search) demo = demo.filter((inv) =>
-        inv.invoice_number.toLowerCase().includes(search.toLowerCase()) ||
-        inv.seller_name.toLowerCase().includes(search.toLowerCase())
-      );
-      setInvoices(demo);
-      setTotal(demo.length);
+      setInvoices([]);
+      setTotal(0);
       setPages(1);
     }
     setLoading(false);
@@ -84,6 +77,18 @@ export default function InvoicesPage() {
   useEffect(() => {
     fetchInvoices();
   }, [fetchInvoices]);
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this invoice? This cannot be undone.")) return;
+    setDeleting(id);
+    try {
+      await api.deleteInvoice(id);
+      await fetchInvoices();
+    } catch {
+      // ignore
+    }
+    setDeleting(null);
+  }
 
   return (
     <div>
@@ -152,7 +157,17 @@ export default function InvoicesPage() {
                   <td><RiskBar value={inv.risk_score} /></td>
                   <td><span className={`badge ${BADGE_MAP[inv.status] || "badge-processing"}`}>{inv.status}</span></td>
                   <td>
-                    <Link href={`/invoices/${inv.id}`} className="text-blue-400 hover:text-blue-300 text-sm transition-colors">View →</Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/invoices/${inv.id}`} className="text-blue-400 hover:text-blue-300 text-sm transition-colors">View →</Link>
+                      <button
+                        onClick={() => handleDelete(inv.id)}
+                        disabled={deleting === inv.id}
+                        className="text-red-400/60 hover:text-red-400 text-sm transition-colors disabled:opacity-30"
+                        title="Delete invoice"
+                      >
+                        {deleting === inv.id ? "…" : "🗑"}
+                      </button>
+                    </div>
                   </td>
                 </motion.tr>
               ))}

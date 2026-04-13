@@ -25,30 +25,21 @@ Scoring formula (component -> penalty -> weight):
 final_score = sum(component_penalty * weight), clamped to [0, 100], rounded to int.
 Level:  0-25=low, 26-50=medium, 51-75=high, 76-100=critical
 
-Demo mode: returns {"score": 15, "level": "low", "explanation": "Low risk invoice."}.
+Demo mode: N/A (removed).
 
 Dependencies:
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE)
 """
 
 import logging
 
 from strands import tool
 
-from app.config import settings
-
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-
-_DEMO_RESULT: dict = {
-    "score": 15,
-    "level": "low",
-    "explanation": "Low risk: all signals pass. Invoice approved for financing.",
-}
 
 # Credit score breakpoints: (minimum_score, penalty)
 _CREDIT_BREAKPOINTS: list[tuple[int, int]] = [
@@ -173,27 +164,8 @@ def _resolve_risk(
     buyer_intel: dict,
     credit_score: dict,
     company_info: dict,
-    use_demo: bool,
 ) -> dict:
-    """Core risk calculation logic, separated from the Strands decorator.
-
-    Args:
-        extracted_data: Structured invoice data (used for logging context).
-        validation_result: Output from validate_fields tool.
-        fraud_result: Output from check_fraud tool.
-        gst_compliance: Output from validate_gst_compliance tool.
-        buyer_intel: Output from get_buyer_intel tool.
-        credit_score: Output from get_credit_score tool.
-        company_info: Output from get_company_info tool.
-        use_demo: Whether to return the demo (pre-computed) result.
-
-    Returns:
-        Dict with score (int), level (str), explanation (str).
-    """
-    if use_demo:
-        logger.info("DEMO_MODE: returning pre-computed risk assessment result")
-        return dict(_DEMO_RESULT)
-
+    """Core risk calculation logic, separated from the Strands decorator."""
     invoice_number = (extracted_data or {}).get("invoice_number", "<unknown>")
     logger.info("Calculating risk score for invoice %s", invoice_number)
 
@@ -259,7 +231,7 @@ def _calculate_risk_tool(
 
     Combines fraud detection, field validation, GST compliance, CIBIL credit
     score, buyer payment history, and company status into a single risk score
-    (0-100, lower is better). In DEMO_MODE, returns a pre-computed low-risk result.
+    (0-100, lower is better).
 
     Args:
         extracted_data: Structured invoice dict from extract_invoice tool.
@@ -278,7 +250,6 @@ def _calculate_risk_tool(
         buyer_intel,
         credit_score,
         company_info,
-        use_demo=settings.DEMO_MODE,
     )
 
 
@@ -297,11 +268,8 @@ def calculate_risk(
     buyer_intel: dict,
     credit_score: dict,
     company_info: dict,
-    _demo: bool = None,
 ) -> dict:
     """Calculate a weighted risk score from all upstream tool outputs.
-
-    Wraps _calculate_risk_tool with a _demo override for testability.
 
     Args:
         extracted_data: Structured invoice dict from extract_invoice tool.
@@ -311,13 +279,10 @@ def calculate_risk(
         buyer_intel: Buyer intelligence dict from get_buyer_intel tool.
         credit_score: Credit score dict from get_credit_score tool.
         company_info: Company information dict from get_company_info tool.
-        _demo: Override for DEMO_MODE. True forces demo path, False forces real
-               logic, None defers to settings.DEMO_MODE.
 
     Returns:
         Dict with keys: score (int), level (str), explanation (str).
     """
-    use_demo = settings.DEMO_MODE if _demo is None else _demo
     return _resolve_risk(
         extracted_data,
         validation_result,
@@ -326,5 +291,4 @@ def calculate_risk(
         buyer_intel,
         credit_score,
         company_info,
-        use_demo=use_demo,
     )

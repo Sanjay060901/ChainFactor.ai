@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PROCESSING_STEPS } from "@/lib/constants";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_BASE } from "@/lib/api";
 
 export interface ProcessingEvent {
   type: string;
@@ -86,8 +85,21 @@ export function useProcessing(invoiceId: string | null) {
     }, 1800);
   }, []);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!invoiceId) return;
+
+    // Trigger processing on the backend (ignores 409 if already processing)
+    try {
+      const token = localStorage.getItem("access_token");
+      if (token) {
+        await fetch(`${API_BASE}/api/v1/invoices/${encodeURIComponent(invoiceId)}/process`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    } catch {
+      // Ignore — the stream will still work or fallback to demo
+    }
 
     // Start elapsed timer
     const startTime = Date.now();
@@ -106,20 +118,23 @@ export function useProcessing(invoiceId: string | null) {
     source.onmessage = (e) => {
       try {
         const event: ProcessingEvent = JSON.parse(e.data);
+        // Backend may send "step" or "step_number" — normalise
+        const raw = JSON.parse(e.data) as Record<string, unknown>;
+        const stepNum = event.step_number ?? (raw.step as number | undefined);
         setState((prev) => {
           const events = [...prev.events, event];
           let { currentStep, completedSteps, isComplete, isFailed, finalStatus, liveDetail } = prev;
 
-          if (event.type === "step_complete" && event.step_number) {
-            completedSteps = [...new Set([...completedSteps, event.step_number])];
-            currentStep = Math.max(currentStep, event.step_number + 1);
+          if (event.type === "step_complete" && stepNum) {
+            completedSteps = [...new Set([...completedSteps, stepNum])];
+            currentStep = Math.max(currentStep, stepNum + 1);
             liveDetail = event;
-          } else if (event.type === "step_start" && event.step_number) {
-            currentStep = event.step_number;
+          } else if (event.type === "step_start" && stepNum) {
+            currentStep = stepNum;
             liveDetail = event;
-          } else if (event.type === "processing_complete") {
+          } else if (event.type === "processing_complete" || event.type === "pipeline_complete") {
             isComplete = true;
-            finalStatus = (event.data?.status as string) || "approved";
+            finalStatus = (event.data?.status as string) || (raw.decision as string) || "approved";
           } else if (event.type === "error") {
             isFailed = true;
             finalStatus = "failed";

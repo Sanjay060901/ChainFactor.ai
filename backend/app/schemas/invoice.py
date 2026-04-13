@@ -1,16 +1,28 @@
 """Invoice request/response schemas."""
 
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class LineItem(BaseModel):
-    description: str
-    hsn_code: str
-    quantity: int
-    rate: float
-    amount: float
+    model_config = {"extra": "ignore"}
+
+    description: str = ""
+    hsn_code: str = ""
+    quantity: int = 0
+    rate: float = 0
+    amount: float = 0
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalise_fields(cls, data: Any) -> Any:
+        """Accept 'unit_price' as alias for 'rate'."""
+        if isinstance(data, dict):
+            if "rate" not in data and "unit_price" in data:
+                data["rate"] = data["unit_price"]
+        return data
 
 
 class SellerBuyer(BaseModel):
@@ -155,7 +167,7 @@ class NFTOptInResponse(BaseModel):
 
 class NFTClaimRequest(BaseModel):
     wallet_address: str
-    signed_optin_txn: str  # base64-encoded signed opt-in txn from user's wallet
+    signed_optin_txn: str = ""  # base64-encoded signed opt-in txn from user's wallet
 
 
 class NFTClaimResponse(BaseModel):

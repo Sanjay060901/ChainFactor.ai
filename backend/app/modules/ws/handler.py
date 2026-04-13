@@ -2,9 +2,7 @@
 
 Endpoint: ``/ws/processing/{invoice_id}``
 
-Behaviour:
-  DEMO_MODE=True  -- streams pre-computed demo events directly (no Redis)
-  DEMO_MODE=False -- subscribes to Redis pub/sub and forwards events
+The handler subscribes to Redis pub/sub and forwards events to the client.
 
 The handler is intentionally kept simple:
   1. Accept the WebSocket connection.
@@ -24,8 +22,6 @@ import logging
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
-from app.config import settings
-from app.modules.ws.demo_events import build_demo_events
 from app.modules.ws.redis_bridge import EventBuffer, subscribe_events
 
 logger = logging.getLogger(__name__)
@@ -52,10 +48,7 @@ async def websocket_invoice_handler(
     )
 
     try:
-        if settings.DEMO_MODE:
-            await _stream_demo(websocket, invoice_id)
-        else:
-            await _stream_live(websocket, invoice_id)
+        await _stream_live(websocket, invoice_id)
     except WebSocketDisconnect:
         logger.info("WS disconnected: invoice_id=%s", invoice_id)
     except Exception as exc:
@@ -67,23 +60,6 @@ async def websocket_invoice_handler(
     finally:
         if websocket.client_state == WebSocketState.CONNECTED:
             await websocket.close()
-
-
-# ---------------------------------------------------------------------------
-# DEMO_MODE stream
-# ---------------------------------------------------------------------------
-
-# Small delay between demo events so the frontend animation is visible.
-_DEMO_EVENT_DELAY_SECONDS = 0.0  # 0 for tests; override in production via env
-
-
-async def _stream_demo(websocket: WebSocket, invoice_id: str) -> None:
-    """Stream 14 step_complete events + pipeline_complete for DEMO_MODE."""
-    events = build_demo_events(invoice_id)
-    for event in events:
-        await websocket.send_json(event)
-        if _DEMO_EVENT_DELAY_SECONDS > 0:
-            await asyncio.sleep(_DEMO_EVENT_DELAY_SECONDS)
 
 
 # ---------------------------------------------------------------------------

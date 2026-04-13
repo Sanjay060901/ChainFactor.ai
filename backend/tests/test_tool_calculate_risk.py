@@ -82,7 +82,6 @@ class TestCalculateRiskReturnShape:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert "score" in result
         assert "level" in result
@@ -97,7 +96,6 @@ class TestCalculateRiskReturnShape:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert isinstance(result["score"], int)
 
@@ -110,7 +108,6 @@ class TestCalculateRiskReturnShape:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert isinstance(result["level"], str)
 
@@ -123,7 +120,6 @@ class TestCalculateRiskReturnShape:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert isinstance(result["explanation"], str)
         assert len(result["explanation"]) > 0
@@ -138,7 +134,6 @@ class TestCalculateRiskReturnShape:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert 0 <= result["score"] <= 100
 
@@ -161,7 +156,6 @@ class TestCalculateRiskLevels:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert result["level"] == "low"
         assert 0 <= result["score"] <= 25
@@ -178,7 +172,6 @@ class TestCalculateRiskLevels:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert result["score"] > 0
         assert result["level"] in ("low", "medium", "high", "critical")
@@ -201,7 +194,6 @@ class TestCalculateRiskLevels:
             buyer_intel=_clean_buyer_intel(),
             credit_score=credit,
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert result["level"] in ("high", "critical")
         assert result["score"] >= 51
@@ -226,7 +218,6 @@ class TestCalculateRiskLevels:
             buyer_intel=buyer,
             credit_score=credit,
             company_info=company,
-            _demo=False,
         )
         assert result["level"] == "critical"
         assert result["score"] >= 76
@@ -241,7 +232,6 @@ class TestCalculateRiskLevels:
             buyer_intel=_clean_buyer_intel(),
             credit_score={"score": 900, "rating": "excellent"},
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert result["level"] == "low"
 
@@ -264,7 +254,6 @@ class TestCalculateRiskSignals:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         bad_validation = {
             "is_valid": False,
@@ -279,7 +268,6 @@ class TestCalculateRiskSignals:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert result["score"] > clean["score"]
 
@@ -293,7 +281,6 @@ class TestCalculateRiskSignals:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         bad_gst = {"is_compliant": False, "details": {}}
         result = calculate_risk(
@@ -304,7 +291,6 @@ class TestCalculateRiskSignals:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert result["score"] > clean["score"]
 
@@ -318,7 +304,6 @@ class TestCalculateRiskSignals:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         bad_buyer = {
             "payment_history": "slow_payer",
@@ -333,7 +318,6 @@ class TestCalculateRiskSignals:
             buyer_intel=bad_buyer,
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert result["score"] > clean["score"]
 
@@ -347,7 +331,6 @@ class TestCalculateRiskSignals:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         dormant = {
             "status": "dormant",
@@ -362,7 +345,6 @@ class TestCalculateRiskSignals:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=dormant,
-            _demo=False,
         )
         assert result["score"] > clean["score"]
 
@@ -376,7 +358,6 @@ class TestCalculateRiskSignals:
             buyer_intel=_clean_buyer_intel(),
             credit_score=_clean_credit_score(),
             company_info=_clean_company_info(),
-            _demo=False,
         )
         poor_credit = {"score": 450, "rating": "poor"}
         result = calculate_risk(
@@ -387,62 +368,8 @@ class TestCalculateRiskSignals:
             buyer_intel=_clean_buyer_intel(),
             credit_score=poor_credit,
             company_info=_clean_company_info(),
-            _demo=False,
         )
         assert result["score"] > clean["score"]
 
 
-# ---------------------------------------------------------------------------
-# Tests: DEMO_MODE
-# ---------------------------------------------------------------------------
 
-
-class TestCalculateRiskDemoMode:
-    """DEMO_MODE returns pre-computed low-risk result."""
-
-    def test_demo_mode_returns_low_risk(self):
-        result = calculate_risk(
-            extracted_data=_clean_extracted_data(),
-            validation_result=_clean_validation(),
-            fraud_result=_clean_fraud(),
-            gst_compliance=_clean_gst(),
-            buyer_intel=_clean_buyer_intel(),
-            credit_score=_clean_credit_score(),
-            company_info=_clean_company_info(),
-            _demo=True,
-        )
-        assert result["score"] == 15
-        assert result["level"] == "low"
-        assert (
-            "low risk" in result["explanation"].lower()
-            or len(result["explanation"]) > 0
-        )
-
-    def test_demo_mode_ignores_bad_inputs(self):
-        """Demo mode overrides bad inputs with fixed result."""
-        fraud = {"overall": "fail", "confidence": 0.0, "flags": [], "layers": []}
-        result = calculate_risk(
-            extracted_data=_clean_extracted_data(),
-            validation_result={"is_valid": False, "errors": [], "warnings": []},
-            fraud_result=fraud,
-            gst_compliance={"is_compliant": False, "details": {}},
-            buyer_intel=_clean_buyer_intel(),
-            credit_score=_clean_credit_score(),
-            company_info=_clean_company_info(),
-            _demo=True,
-        )
-        assert result["score"] == 15
-        assert result["level"] == "low"
-
-    def test_demo_mode_result_keys(self):
-        result = calculate_risk(
-            extracted_data=_clean_extracted_data(),
-            validation_result=_clean_validation(),
-            fraud_result=_clean_fraud(),
-            gst_compliance=_clean_gst(),
-            buyer_intel=_clean_buyer_intel(),
-            credit_score=_clean_credit_score(),
-            company_info=_clean_company_info(),
-            _demo=True,
-        )
-        assert set(result.keys()) == {"score", "level", "explanation"}

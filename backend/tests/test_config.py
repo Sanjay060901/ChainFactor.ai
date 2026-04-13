@@ -10,7 +10,6 @@ async def test_default_settings() -> None:
     """Verify critical default settings values."""
     assert settings.APP_NAME == "ChainFactor AI"
     assert settings.DEBUG is True
-    assert settings.DEMO_MODE is True  # overridden by conftest for tests
     # AWS_REGION may be overridden by system env var (e.g. AWS_REGION=us-east-1)
     assert isinstance(settings.AWS_REGION, str) and len(settings.AWS_REGION) > 0
     assert settings.BEDROCK_REGION == "us-east-1"

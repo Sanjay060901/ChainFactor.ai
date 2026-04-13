@@ -102,21 +102,21 @@ class TestInvoiceAgentSystemPrompt:
 class TestCreateInvoiceProcessingAgent:
     """Tests for the agent factory function."""
 
-    @patch("app.modules.agents.invoice_agent.get_bedrock_model")
+    @patch("app.modules.agents.invoice_agent.get_model_for_agent")
     def test_returns_agent_instance(self, mock_get_model):
         """create_invoice_processing_agent() must return a Strands Agent."""
         mock_get_model.return_value = MagicMock()
         agent = create_invoice_processing_agent()
         assert isinstance(agent, Agent)
 
-    @patch("app.modules.agents.invoice_agent.get_bedrock_model")
+    @patch("app.modules.agents.invoice_agent.get_model_for_agent")
     def test_agent_has_correct_name(self, mock_get_model):
         """Agent name should be 'invoice_processing_agent'."""
         mock_get_model.return_value = MagicMock()
         agent = create_invoice_processing_agent()
         assert agent.name == "invoice_processing_agent"
 
-    @patch("app.modules.agents.invoice_agent.get_bedrock_model")
+    @patch("app.modules.agents.invoice_agent.get_model_for_agent")
     def test_agent_has_11_tools(self, mock_get_model):
         """Agent should be initialized with exactly 11 tools."""
         mock_get_model.return_value = MagicMock()
@@ -127,7 +127,7 @@ class TestCreateInvoiceProcessingAgent:
         tool_count = len(tool_config)
         assert tool_count == 11, f"Expected 11 tools, got {tool_count}"
 
-    @patch("app.modules.agents.invoice_agent.get_bedrock_model")
+    @patch("app.modules.agents.invoice_agent.get_model_for_agent")
     def test_agent_tool_names_in_registry(self, mock_get_model):
         """All expected tool names should be present in the agent tool registry."""
         mock_get_model.return_value = MagicMock()
@@ -140,14 +140,14 @@ class TestCreateInvoiceProcessingAgent:
                 f"Tool '{name}' not found in agent registry: {registry_names}"
             )
 
-    @patch("app.modules.agents.invoice_agent.get_bedrock_model")
+    @patch("app.modules.agents.invoice_agent.get_model_for_agent")
     def test_agent_uses_sonnet_model(self, mock_get_model):
         """Agent should be created with the Sonnet model ID."""
         mock_get_model.return_value = MagicMock()
         create_invoice_processing_agent()
         mock_get_model.assert_called_once()
 
-    @patch("app.modules.agents.invoice_agent.get_bedrock_model")
+    @patch("app.modules.agents.invoice_agent.get_model_for_agent")
     def test_agent_has_system_prompt(self, mock_get_model):
         """Agent should have a non-empty system prompt."""
         mock_get_model.return_value = MagicMock()

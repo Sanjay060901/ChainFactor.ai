@@ -1,13 +1,11 @@
 """Tests for Feature 7.1: Seller Rules CRUD -- real DB operations.
 
 Tests cover:
-- DEMO_MODE returns stub data (existing behavior preserved)
-- Non-DEMO: create, list, update, delete rules + default action
+- create, list, update, delete rules + default action
 - IDOR prevention on update/delete
 """
 
 import uuid
-from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
@@ -46,36 +44,7 @@ async def _create_rule(
 
 
 # ---------------------------------------------------------------------------
-# DEMO_MODE tests
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_list_rules_demo_mode(client: AsyncClient):
-    """In DEMO_MODE, list returns pre-built stub rules."""
-    response = await client.get("/api/v1/rules")
-
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data["rules"]) == 2
-    assert data["default_action"] == "flag_for_review"
-
-
-@pytest.mark.asyncio
-async def test_create_rule_demo_mode(client: AsyncClient):
-    """In DEMO_MODE, create returns stub response."""
-    body = {
-        "conditions": [{"field": "amount", "operator": "lt", "value": 100000}],
-        "action": "auto_approve",
-    }
-    response = await client.post("/api/v1/rules", json=body)
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == "rule_stub_new"
-
-
-# ---------------------------------------------------------------------------
-# Non-DEMO mode tests (real DB CRUD)
+# Tests: real DB CRUD
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -83,9 +52,7 @@ async def test_list_rules_real_empty(
     client: AsyncClient, db_session: AsyncSession, test_user: User
 ):
     """Non-DEMO with no rules returns empty list and default action."""
-    with patch("app.modules.rules.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/rules")
+    response = await client.get("/api/v1/rules")
 
     assert response.status_code == 200
     data = response.json()
@@ -103,9 +70,7 @@ async def test_create_rule_real(
         "action": "auto_approve",
     }
 
-    with patch("app.modules.rules.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.post("/api/v1/rules", json=body)
+    response = await client.post("/api/v1/rules", json=body)
 
     assert response.status_code == 200
     data = response.json()
@@ -123,9 +88,7 @@ async def test_list_rules_real_returns_user_rules(
     await _create_rule(db_session, test_user, action="auto_approve")
     await _create_rule(db_session, test_user, action="reject")
 
-    with patch("app.modules.rules.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/rules")
+    response = await client.get("/api/v1/rules")
 
     data = response.json()
     assert len(data["rules"]) == 2
@@ -151,9 +114,7 @@ async def test_list_rules_idor_prevention(
     await _create_rule(db_session, test_user, action="auto_approve")
     await _create_rule(db_session, other_user, action="reject")
 
-    with patch("app.modules.rules.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.get("/api/v1/rules")
+    response = await client.get("/api/v1/rules")
 
     data = response.json()
     assert len(data["rules"]) == 1
@@ -169,9 +130,7 @@ async def test_update_rule_real(
 
     body = {"action": "reject", "is_active": False}
 
-    with patch("app.modules.rules.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.put(f"/api/v1/rules/{rule.id}", json=body)
+    response = await client.put(f"/api/v1/rules/{rule.id}", json=body)
 
     assert response.status_code == 200
     data = response.json()
@@ -187,9 +146,7 @@ async def test_update_rule_not_found(
     fake_id = uuid.uuid4()
     body = {"action": "reject"}
 
-    with patch("app.modules.rules.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.put(f"/api/v1/rules/{fake_id}", json=body)
+    response = await client.put(f"/api/v1/rules/{fake_id}", json=body)
 
     assert response.status_code == 404
 
@@ -214,9 +171,7 @@ async def test_update_rule_idor(
     rule = await _create_rule(db_session, other_user, action="auto_approve")
 
     body = {"action": "reject"}
-    with patch("app.modules.rules.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.put(f"/api/v1/rules/{rule.id}", json=body)
+    response = await client.put(f"/api/v1/rules/{rule.id}", json=body)
 
     assert response.status_code == 403
 
@@ -228,9 +183,7 @@ async def test_delete_rule_real(
     """Non-DEMO deletes a rule from DB."""
     rule = await _create_rule(db_session, test_user)
 
-    with patch("app.modules.rules.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.delete(f"/api/v1/rules/{rule.id}")
+    response = await client.delete(f"/api/v1/rules/{rule.id}")
 
     assert response.status_code == 200
     data = response.json()
@@ -244,9 +197,7 @@ async def test_delete_rule_not_found(
     """Non-DEMO delete on non-existent rule returns 404."""
     fake_id = uuid.uuid4()
 
-    with patch("app.modules.rules.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.delete(f"/api/v1/rules/{fake_id}")
+    response = await client.delete(f"/api/v1/rules/{fake_id}")
 
     assert response.status_code == 404
 
@@ -270,9 +221,7 @@ async def test_delete_rule_idor(
 
     rule = await _create_rule(db_session, other_user)
 
-    with patch("app.modules.rules.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.delete(f"/api/v1/rules/{rule.id}")
+    response = await client.delete(f"/api/v1/rules/{rule.id}")
 
     assert response.status_code == 403
 
@@ -284,9 +233,7 @@ async def test_set_default_action_real(
     """Non-DEMO creates/updates UserSettings.default_action."""
     body = {"default_action": "reject"}
 
-    with patch("app.modules.rules.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.put("/api/v1/rules/default-action", json=body)
+    response = await client.put("/api/v1/rules/default-action", json=body)
 
     assert response.status_code == 200
     data = response.json()
@@ -308,9 +255,7 @@ async def test_set_default_action_real_update_existing(
     await db_session.flush()
 
     body = {"default_action": "always_approve"}
-    with patch("app.modules.rules.router.settings") as mock_settings:
-        mock_settings.DEMO_MODE = False
-        response = await client.put("/api/v1/rules/default-action", json=body)
+    response = await client.put("/api/v1/rules/default-action", json=body)
 
     assert response.status_code == 200
     data = response.json()

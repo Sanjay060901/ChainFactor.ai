@@ -32,7 +32,12 @@ def _mock_invoice(status: str = "uploaded") -> MagicMock:
     inv.id = uuid.UUID(INVOICE_ID)
     inv.user_id = USER_ID
     inv.status = status
+    inv.invoice_number = "INV-TEST-0001"
+    inv.file_name = "invoice.pdf"
     inv.file_key = f"invoices/{USER_ID}/{INVOICE_ID}/invoice.pdf"
+    inv.extracted_data = {}
+    inv.risk_score = None
+    inv.nft_record = None
     return inv
 
 
@@ -62,8 +67,6 @@ async def test_process_returns_202_with_correct_shape(client: AsyncClient):
             "app.modules.invoices.router._get_invoice_for_user",
             new=AsyncMock(return_value=mock_inv),
         ),
-        patch("app.modules.agents.pipeline.run_invoice_pipeline", new=AsyncMock()),
-        patch("asyncio.create_task") as mock_task,
     ):
         response = await client.post(f"/api/v1/invoices/{INVOICE_ID}/process")
 
@@ -72,7 +75,6 @@ async def test_process_returns_202_with_correct_shape(client: AsyncClient):
     assert "invoice_id" in data
     assert "status" in data
     assert "ws_url" in data
-    assert mock_task.called
 
 
 # ---------------------------------------------------------------------------
@@ -90,8 +92,6 @@ async def test_process_response_status_is_processing(client: AsyncClient):
             "app.modules.invoices.router._get_invoice_for_user",
             new=AsyncMock(return_value=mock_inv),
         ),
-        patch("app.modules.agents.pipeline.run_invoice_pipeline", new=AsyncMock()),
-        patch("asyncio.create_task"),
     ):
         response = await client.post(f"/api/v1/invoices/{INVOICE_ID}/process")
 
@@ -114,8 +114,6 @@ async def test_process_ws_url_contains_invoice_id(client: AsyncClient):
             "app.modules.invoices.router._get_invoice_for_user",
             new=AsyncMock(return_value=mock_inv),
         ),
-        patch("app.modules.agents.pipeline.run_invoice_pipeline", new=AsyncMock()),
-        patch("asyncio.create_task"),
     ):
         response = await client.post(f"/api/v1/invoices/{INVOICE_ID}/process")
 
@@ -138,8 +136,7 @@ async def test_process_response_invoice_id_matches_path(client: AsyncClient):
             "app.modules.invoices.router._get_invoice_for_user",
             new=AsyncMock(return_value=mock_inv),
         ),
-        patch("app.modules.agents.pipeline.run_invoice_pipeline", new=AsyncMock()),
-        patch("asyncio.create_task"),
+
     ):
         response = await client.post(f"/api/v1/invoices/{INVOICE_ID}/process")
 
@@ -152,8 +149,8 @@ async def test_process_response_invoice_id_matches_path(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_process_returns_409_when_status_is_processing(client: AsyncClient):
-    """POST /process returns 409 if invoice status is 'processing'."""
+async def test_process_allows_reprocessing_when_status_is_processing(client: AsyncClient):
+    """POST /process allows re-processing if invoice status is 'processing' (retry)."""
     mock_inv = _mock_invoice("processing")
 
     with patch(
@@ -162,8 +159,7 @@ async def test_process_returns_409_when_status_is_processing(client: AsyncClient
     ):
         response = await client.post(f"/api/v1/invoices/{INVOICE_ID}/process")
 
-    assert response.status_code == 409
-    assert "processing" in response.json()["detail"].lower()
+    assert response.status_code == 202
 
 
 # ---------------------------------------------------------------------------
@@ -211,8 +207,8 @@ async def test_process_returns_404_when_invoice_not_found(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_process_creates_background_task(client: AsyncClient):
-    """asyncio.create_task must be called once to launch the pipeline."""
+async def test_process_runs_demo_pipeline(client: AsyncClient):
+    """Process endpoint runs the demo pipeline inline."""
     mock_inv = _mock_invoice("uploaded")
 
     with (
@@ -220,12 +216,12 @@ async def test_process_creates_background_task(client: AsyncClient):
             "app.modules.invoices.router._get_invoice_for_user",
             new=AsyncMock(return_value=mock_inv),
         ),
-        patch("app.modules.agents.pipeline.run_invoice_pipeline", new=AsyncMock()),
-        patch("asyncio.create_task") as mock_task,
     ):
-        await client.post(f"/api/v1/invoices/{INVOICE_ID}/process")
+        response = await client.post(f"/api/v1/invoices/{INVOICE_ID}/process")
 
-    mock_task.assert_called_once()
+    assert response.status_code == 202
+    # Demo pipeline sets status to approved
+    assert mock_inv.status == "approved"
 
 
 # ---------------------------------------------------------------------------

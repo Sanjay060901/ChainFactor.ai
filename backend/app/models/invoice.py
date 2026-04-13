@@ -3,17 +3,17 @@
 import uuid
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
+from app.models.compat import GUID, JSONType
 
 
 class Invoice(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "invoices"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+        GUID(), ForeignKey("users.id"), nullable=False, index=True
     )
 
     # Invoice identifiers
@@ -28,17 +28,17 @@ class Invoice(Base, UUIDMixin, TimestampMixin):
     file_key: Mapped[str] = mapped_column(String(512), nullable=False)
     file_name: Mapped[str] = mapped_column(String(256), nullable=False)
 
-    # AI pipeline results (JSONB -- flexible, matches Pydantic schemas)
-    extracted_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    validation_result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    gst_compliance: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    fraud_detection: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    gstin_verification: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    buyer_intel: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    credit_score: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    company_info: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    risk_assessment: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    underwriting: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # AI pipeline results (JSON -- flexible, matches Pydantic schemas)
+    extracted_data: Mapped[dict | None] = mapped_column(JSONType(), nullable=True)
+    validation_result: Mapped[dict | None] = mapped_column(JSONType(), nullable=True)
+    gst_compliance: Mapped[dict | None] = mapped_column(JSONType(), nullable=True)
+    fraud_detection: Mapped[dict | None] = mapped_column(JSONType(), nullable=True)
+    gstin_verification: Mapped[dict | None] = mapped_column(JSONType(), nullable=True)
+    buyer_intel: Mapped[dict | None] = mapped_column(JSONType(), nullable=True)
+    credit_score: Mapped[dict | None] = mapped_column(JSONType(), nullable=True)
+    company_info: Mapped[dict | None] = mapped_column(JSONType(), nullable=True)
+    risk_assessment: Mapped[dict | None] = mapped_column(JSONType(), nullable=True)
+    underwriting: Mapped[dict | None] = mapped_column(JSONType(), nullable=True)
 
     # Risk score (denormalized for fast queries/sorting)
     risk_score: Mapped[int | None] = mapped_column(Integer, nullable=True)

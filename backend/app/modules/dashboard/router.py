@@ -1,9 +1,8 @@
-"""Dashboard API endpoints. DEMO_MODE returns stubs; real mode aggregates from DB."""
+"""Dashboard API endpoints. Aggregates data from DB."""
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.modules.auth.dependencies import get_current_user
@@ -16,6 +15,33 @@ from app.schemas.dashboard import (
 )
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+
+def _compute_monthly_volume(invoices) -> list:
+    """Aggregate invoices into monthly buckets for the last 6 months."""
+    from collections import defaultdict
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+    buckets: dict[str, dict] = defaultdict(lambda: {"count": 0, "value": 0.0})
+
+    for inv in invoices:
+        ts = inv.created_at or now
+        key = ts.strftime("%b")  # e.g. "Apr"
+        buckets[key]["count"] += 1
+        buckets[key]["value"] += (inv.extracted_data or {}).get("total_amount", 0.0)
+
+    # Build ordered list for the last 6 months
+    import calendar
+
+    months = []
+    for offset in range(5, -1, -1):
+        month_num = ((now.month - 1 - offset) % 12) + 1
+        label = calendar.month_abbr[month_num]
+        b = buckets.get(label, {"count": 0, "value": 0.0})
+        months.append(MonthlyVolume(month=label, count=b["count"], value=b["value"]))
+
+    return months
 
 _ACTIVE_STATUSES = {"approved", "minted"}
 _PENDING_STATUSES = {
@@ -34,21 +60,6 @@ async def dashboard_summary(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if settings.DEMO_MODE:
-        return DashboardSummaryResponse(
-            total_value=4520000,
-            active_invoices=12,
-            pending_invoices=3,
-            avg_risk_score=72.0,
-            approval_rate=85.0,
-            risk_distribution=RiskDistribution(low=60, medium=25, high=15),
-            monthly_volume=[
-                MonthlyVolume(month="Jan", count=8, value=2400000),
-                MonthlyVolume(month="Feb", count=11, value=3100000),
-                MonthlyVolume(month="Mar", count=15, value=4520000),
-            ],
-        )
-
     # Real DB aggregation
     from sqlalchemy import select
 
@@ -102,16 +113,29 @@ async def dashboard_summary(
             medium=round(medium_count / scored_total * 100, 1),
             high=round(high_count / scored_total * 100, 1),
         ),
-        monthly_volume=[],
+        monthly_volume=_compute_monthly_volume(invoices),
     )
 
 
 @router.post("/nl-query", response_model=NLQueryResponse)
-async def nl_query(body: NLQueryRequest):
+async def nl_query(
+    body: NLQueryRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Natural language query endpoint for portfolio analysis.
+
+    Parses the user's query, runs a safe DB lookup, and returns a
+    human-readable answer with supporting data.
+    """
+    from app.modules.dashboard.nl_engine import execute_nl_query
+
+    result = await execute_nl_query(
+        query=body.query,
+        user_id=current_user.id,
+        db=db,
+    )
     return NLQueryResponse(
-        answer=f'You asked: "{body.query}". You have 3 high-risk invoices this week: INV-2026-002 (₹3.1L, risk 45), INV-2026-004 (₹2.1L, risk 12). Consider reviewing the flagged invoices before proceeding.',
-        data=[
-            {"invoice_id": "inv_stub_002", "risk_score": 45, "amount": 310000},
-            {"invoice_id": "inv_stub_004", "risk_score": 12, "amount": 210000},
-        ],
+        answer=result["answer"],
+        data=result.get("data"),
     )

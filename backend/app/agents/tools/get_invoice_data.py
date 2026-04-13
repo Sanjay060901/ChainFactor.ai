@@ -13,14 +13,11 @@ Demo mode: always returns demo-invoice-001 data.
 
 Dependencies:
     - strands (@tool decorator)
-    - app.config.settings (DEMO_MODE)
 """
 
 import logging
 
 from strands import tool
-
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -66,22 +63,9 @@ _DEFAULT_DEMO_ID = "demo-invoice-001"
 # ---------------------------------------------------------------------------
 
 
-def _resolve_invoice_data(invoice_id: str, use_demo: bool) -> dict:
-    """Core invoice data retrieval logic, separated from the Strands decorator.
-
-    Args:
-        invoice_id: Unique identifier for the invoice.
-        use_demo: Whether to return the demo (pre-computed) result.
-
-    Returns:
-        Dict with invoice_id, status, amount, seller_id, buyer_gstin,
-        created_at, s3_key.
-    """
-    if use_demo:
-        logger.info("DEMO_MODE: returning demo invoice data for %s", invoice_id)
-        return dict(_DEMO_INVOICES[_DEFAULT_DEMO_ID])
-
-    # Check if the invoice_id matches a known demo invoice
+def _resolve_invoice_data(invoice_id: str) -> dict:
+    """Core invoice data retrieval logic, separated from the Strands decorator."""
+    # Check if the invoice_id matches a known mock invoice
     if invoice_id in _DEMO_INVOICES:
         logger.info("Found known invoice %s in mock data", invoice_id)
         return dict(_DEMO_INVOICES[invoice_id])
@@ -114,7 +98,7 @@ def _get_invoice_data_tool(invoice_id: str) -> dict:
     Args:
         invoice_id: Unique identifier for the invoice.
     """
-    return _resolve_invoice_data(invoice_id, use_demo=settings.DEMO_MODE)
+    return _resolve_invoice_data(invoice_id)
 
 
 # ---------------------------------------------------------------------------
@@ -122,18 +106,14 @@ def _get_invoice_data_tool(invoice_id: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def get_invoice_data(invoice_id: str, _demo: bool = None) -> dict:
+def get_invoice_data(invoice_id: str) -> dict:
     """Retrieve invoice data from the database by invoice ID.
-
-    Wraps _get_invoice_data_tool with a _demo override for testability.
 
     Args:
         invoice_id: Unique identifier for the invoice.
-        _demo: Override for DEMO_MODE. True forces demo, False forces real, None defers.
 
     Returns:
         Dict with invoice_id, status, amount, seller_id, buyer_gstin,
         created_at, s3_key.
     """
-    use_demo = settings.DEMO_MODE if _demo is None else _demo
-    return _resolve_invoice_data(invoice_id, use_demo=use_demo)
+    return _resolve_invoice_data(invoice_id)

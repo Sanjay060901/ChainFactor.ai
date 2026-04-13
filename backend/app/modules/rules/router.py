@@ -1,4 +1,4 @@
-"""Seller rules API endpoints. DEMO_MODE returns stubs; real mode uses DB."""
+"""Seller rules API endpoints."""
 
 import uuid as _uuid
 from datetime import datetime, timezone
@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.modules.auth.dependencies import get_current_user
@@ -23,42 +22,12 @@ from app.schemas.rules import (
 
 router = APIRouter(prefix="/rules", tags=["rules"])
 
-STUB_NOW = datetime(2026, 3, 18, 10, 0, 0, tzinfo=timezone.utc)
-
-STUB_RULES = [
-    RuleResponse(
-        id="rule_stub_001",
-        conditions=[
-            RuleCondition(field="amount", operator="lt", value=500000),
-            RuleCondition(field="risk_score", operator="gt", value=60),
-            RuleCondition(field="fraud_flags", operator="eq", value=0),
-        ],
-        action="auto_approve",
-        is_active=True,
-        created_at=STUB_NOW,
-    ),
-    RuleResponse(
-        id="rule_stub_002",
-        conditions=[
-            RuleCondition(field="amount", operator="lt", value=1000000),
-            RuleCondition(field="risk_score", operator="gt", value=80),
-            RuleCondition(field="cibil_score", operator="gt", value=700),
-        ],
-        action="auto_approve",
-        is_active=True,
-        created_at=STUB_NOW,
-    ),
-]
-
 
 @router.get("", response_model=RulesListResponse)
 async def list_rules(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if settings.DEMO_MODE:
-        return RulesListResponse(rules=STUB_RULES, default_action="flag_for_review")
-
     from sqlalchemy import select
 
     from app.models.rule import Rule
@@ -97,15 +66,6 @@ async def create_rule(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if settings.DEMO_MODE:
-        return RuleResponse(
-            id="rule_stub_new",
-            conditions=body.conditions,
-            action=body.action,
-            is_active=True,
-            created_at=STUB_NOW,
-        )
-
     from app.models.rule import Rule
 
     rule = Rule(
@@ -133,9 +93,6 @@ async def set_default_action(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if settings.DEMO_MODE:
-        return DefaultActionResponse(default_action=body.default_action)
-
     from sqlalchemy import select
 
     from app.models.user_settings import UserSettings
@@ -166,18 +123,6 @@ async def update_rule(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if settings.DEMO_MODE:
-        existing = STUB_RULES[0]
-        return RuleResponse(
-            id=rule_id,
-            conditions=body.conditions or existing.conditions,
-            action=body.action or existing.action,
-            is_active=body.is_active
-            if body.is_active is not None
-            else existing.is_active,
-            created_at=existing.created_at,
-        )
-
     from sqlalchemy import select
 
     from app.models.rule import Rule
@@ -217,9 +162,6 @@ async def delete_rule(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if settings.DEMO_MODE:
-        return MessageResponse(message=f"Rule {rule_id} deleted")
-
     from sqlalchemy import select
 
     from app.models.rule import Rule
