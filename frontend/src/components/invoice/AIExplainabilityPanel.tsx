@@ -109,7 +109,7 @@ function computeSignals(props: Props): SignalItem[] {
     maxScore: 10,
     status: coStatus === "active" ? "pass" : "fail",
     detail: coStatus === "active"
-      ? `Active since ${props.companyInfo?.incorporated || "N/A"}, paid-up capital ₹${Number(props.companyInfo?.paid_up_capital || 0).toLocaleString("en-IN")}`
+      ? `Active since ${props.companyInfo?.incorporated || "N/A"}, paid-up capital ₹${Math.round(Number(props.companyInfo?.paid_up_capital || 0)).toLocaleString("en-IN")}`
       : "Company is dormant or inactive",
     icon: "🏢",
   });

@@ -4,7 +4,7 @@
  * Base URL switches between local dev and production via env var.
  */
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 async function request<T>(
   path: string,

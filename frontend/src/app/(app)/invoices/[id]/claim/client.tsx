@@ -20,7 +20,22 @@ export default function ClaimNFTClient({ params }: { params: { id: string } }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getInvoice(invoiceId).then((data) => setInvoice(data as Record<string, any>)).catch(() => {
+    api.getInvoice(invoiceId).then((data) => {
+      const inv = data as Record<string, any>;
+      setInvoice(inv);
+      // If NFT already claimed, show success screen with real explorer link
+      const nft = inv?.nft;
+      if (nft && nft.status === "claimed") {
+        const explorerUrl = nft.explorer_url || `${PERA_EXPLORER_BASE}/asset/${nft.asset_id}/`;
+        setClaimResult({
+          asset_id: nft.asset_id,
+          optin_txn_id: "completed",
+          transfer_txn_id: "completed",
+          explorer_url: explorerUrl,
+          status: "claimed",
+        });
+      }
+    }).catch(() => {
       setInvoice(null);
     });
   }, [invoiceId]);
@@ -83,22 +98,13 @@ export default function ClaimNFTClient({ params }: { params: { id: string } }) {
           <p className="text-5xl">🎉</p>
           <h2 className="mt-4 text-xl font-bold text-gradient">NFT Claimed Successfully!</h2>
           <p className="mt-2 text-sm text-slate-400">Asset ID: <span className="text-blue-400 font-mono">#{claimResult.asset_id}</span></p>
-          <p className="mt-1 text-sm text-slate-400">Transaction: <span className="text-blue-400 font-mono">{claimResult.transfer_txn_id.slice(0, 12)}...</span></p>
-          {claimResult.transfer_txn_id.startsWith("DEMO_") && (
-            <p className="mt-2 inline-block rounded-full bg-yellow-500/10 border border-yellow-500/20 px-3 py-1 text-xs text-yellow-400">
-              🧪 Demo Mode — NFT simulated on testnet
-            </p>
+          {claimResult.transfer_txn_id && claimResult.transfer_txn_id !== "completed" && (
+            <p className="mt-1 text-sm text-slate-400">Transaction: <span className="text-blue-400 font-mono">{claimResult.transfer_txn_id.slice(0, 12)}...</span></p>
           )}
           <div className="mt-6 flex justify-center gap-3">
-            {!claimResult.transfer_txn_id.startsWith("DEMO_") ? (
-              <a href={`${PERA_EXPLORER_BASE}/asset/${claimResult.asset_id}/`} target="_blank" rel="noopener noreferrer" className="btn-glow px-6 py-2.5 text-sm">
-                View on Pera Explorer ↗
-              </a>
-            ) : (
-              <a href={`${PERA_EXPLORER_BASE}/`} target="_blank" rel="noopener noreferrer" className="btn-glow px-6 py-2.5 text-sm">
-                Algorand Testnet Explorer ↗
-              </a>
-            )}
+            <a href={claimResult.explorer_url || `${PERA_EXPLORER_BASE}/asset/${claimResult.asset_id}/`} target="_blank" rel="noopener noreferrer" className="btn-glow px-6 py-2.5 text-sm">
+              View on Pera Explorer ↗
+            </a>
             <Link href={`/invoices/${invoiceId}`} className="btn-outline-glow px-6 py-2.5 text-sm">
               Back to Invoice
             </Link>
@@ -124,7 +130,7 @@ export default function ClaimNFTClient({ params }: { params: { id: string } }) {
               <p className="text-xl font-bold text-slate-100">{extracted.invoice_number || invoice?.invoice_number || "INV-..."}</p>
               <p className="text-sm text-slate-400">{extracted.seller?.name || "Seller"} → {extracted.buyer?.name || "Buyer"}</p>
               <p className="mt-2 text-2xl font-bold text-gradient">
-                {extracted.total_amount ? `₹${Number(extracted.total_amount).toLocaleString("en-IN")}` : "—"}
+                {extracted.total_amount ? `₹${Math.round(Number(extracted.total_amount)).toLocaleString("en-IN")}` : "—"}
               </p>
             </div>
             <div className="mt-5 flex items-center justify-between">

@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 interface VerifyResult {
   verified: boolean;
@@ -210,7 +210,7 @@ export default function VerifyPage() {
                 <div>
                   <span className="text-slate-500">Amount:</span>{" "}
                   <span className="text-slate-200">
-                    {result.amount ? `₹${Number(result.amount).toLocaleString("en-IN")}` : "N/A"}
+                    {result.amount ? `₹${Math.round(Number(result.amount)).toLocaleString("en-IN")}` : "N/A"}
                   </span>
                 </div>
                 <div>

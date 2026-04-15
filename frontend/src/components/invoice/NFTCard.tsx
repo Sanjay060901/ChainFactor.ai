@@ -103,7 +103,7 @@ export function NFTCard({
         </p>
         {displayAmount != null && (
           <p className="mt-2 text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
-            ₹{Number(displayAmount).toLocaleString("en-IN")}
+            ₹{Math.round(Number(displayAmount)).toLocaleString("en-IN")}
           </p>
         )}
       </div>

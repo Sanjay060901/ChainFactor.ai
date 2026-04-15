@@ -46,7 +46,7 @@ function RiskBar({ value }: { value: number | null }) {
       <div className="h-1.5 w-16 rounded-full bg-slate-700">
         <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${value}%` }} />
       </div>
-      <span className="text-xs text-slate-400">{value}</span>
+      <span className="text-xs text-slate-400">{Math.round(value)}</span>
     </div>
   );
 }
@@ -81,8 +81,8 @@ export default function DashboardPage() {
   const stats = data ? [
     { label: "Total Value", value: formatValue(data.total_value), change: `${data.active_invoices} active`, icon: "💰", color: "from-blue-500/20 to-blue-600/5", changeColor: "text-emerald-400" },
     { label: "Active Invoices", value: String(data.active_invoices), change: `${data.pending_invoices} pending`, icon: "📄", color: "from-indigo-500/20 to-indigo-600/5", changeColor: "text-yellow-400" },
-    { label: "Avg Risk Score", value: String(data.avg_risk_score), change: data.avg_risk_score >= 70 ? "Low risk" : "Medium risk", icon: "📊", color: "from-emerald-500/20 to-emerald-600/5", changeColor: "text-emerald-400" },
-    { label: "Approval Rate", value: `${data.approval_rate}%`, change: "of total", icon: "✅", color: "from-violet-500/20 to-violet-600/5", changeColor: "text-emerald-400" },
+    { label: "Avg Risk Score", value: String(Math.round(data.avg_risk_score)), change: data.avg_risk_score >= 70 ? "Low risk" : "Medium risk", icon: "📊", color: "from-emerald-500/20 to-emerald-600/5", changeColor: "text-emerald-400" },
+    { label: "Approval Rate", value: `${Math.round(data.approval_rate)}%`, change: "of total", icon: "✅", color: "from-violet-500/20 to-violet-600/5", changeColor: "text-emerald-400" },
   ] : [
     { label: "Total Value", value: "—", change: "Loading", icon: "💰", color: "from-blue-500/20 to-blue-600/5", changeColor: "text-slate-500" },
     { label: "Active Invoices", value: "—", change: "Loading", icon: "📄", color: "from-indigo-500/20 to-indigo-600/5", changeColor: "text-slate-500" },
@@ -145,14 +145,14 @@ export default function DashboardPage() {
               </defs>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-bold text-slate-100">{avgRisk || "—"}</span>
+              <span className="text-2xl font-bold text-slate-100">{avgRisk ? Math.round(avgRisk) : "—"}</span>
               <span className="text-[10px] text-slate-400">Avg Risk</span>
             </div>
           </div>
           <div className="mt-4 flex gap-4 text-xs">
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-500" />Low ({riskDist.low}%)</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />Med ({riskDist.medium}%)</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-yellow-500" />High ({riskDist.high}%)</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-500" />Low ({Math.round(riskDist.low)}%)</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />Med ({Math.round(riskDist.medium)}%)</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-yellow-500" />High ({Math.round(riskDist.high)}%)</span>
           </div>
         </motion.div>
         <motion.div

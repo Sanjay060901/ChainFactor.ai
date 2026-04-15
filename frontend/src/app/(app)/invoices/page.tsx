@@ -38,7 +38,7 @@ function RiskBar({ value }: { value: number | null }) {
       <div className="h-1.5 w-16 rounded-full bg-slate-700">
         <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${value}%` }} />
       </div>
-      <span className="text-xs text-slate-400">{value}</span>
+      <span className="text-xs text-slate-400">{Math.round(value)}</span>
     </div>
   );
 }

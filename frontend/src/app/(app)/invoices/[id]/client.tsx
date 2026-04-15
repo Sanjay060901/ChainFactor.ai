@@ -100,9 +100,9 @@ export default function InvoiceDetailClient({ params }: { params: { id: string }
     ["Buyer GSTIN", buyer.gstin || "—"],
     ["Invoice #", extracted.invoice_number || invoice.invoice_number || "—"],
     ["Date", extracted.invoice_date || "—"],
-    ["Subtotal", extracted.subtotal ? `₹${Number(extracted.subtotal).toLocaleString("en-IN")}` : "—"],
-    ["Tax", extracted.tax_amount ? `₹${Number(extracted.tax_amount).toLocaleString("en-IN")}` : "—"],
-    ["Total", extracted.total_amount ? `₹${Number(extracted.total_amount).toLocaleString("en-IN")}` : "—"],
+    ["Subtotal", extracted.subtotal ? `₹${Math.round(Number(extracted.subtotal)).toLocaleString("en-IN")}` : "—"],
+    ["Tax", extracted.tax_amount ? `₹${Math.round(Number(extracted.tax_amount)).toLocaleString("en-IN")}` : "—"],
+    ["Total", extracted.total_amount ? `₹${Math.round(Number(extracted.total_amount)).toLocaleString("en-IN")}` : "—"],
     ["Due", extracted.due_date || "—"],
   ];
 
@@ -196,14 +196,14 @@ export default function InvoiceDetailClient({ params }: { params: { id: string }
                   {layer.detail && <span className="ml-2 text-xs text-slate-500">{layer.detail}</span>}
                 </div>
                 <div className="flex items-center gap-2">
-                  {layer.confidence > 0 && <span className="text-[10px] text-slate-500">{layer.confidence}%</span>}
+                  {layer.confidence > 0 && <span className="text-[10px] text-slate-500">{Number(layer.confidence).toFixed(1)}%</span>}
                   <span className={`font-medium ${!passed ? "text-red-400" : "text-emerald-400"}`}>{!passed ? "⚠️ Flag" : "✅ Pass"}</span>
                 </div>
               </motion.div>
             );
           })}
         </div>
-        <p className="mt-3 text-sm text-slate-500">Overall: <span className={fraudDetection.overall === "pass" ? "text-emerald-400" : "text-red-400"}>{fraudDetection.overall || "pass"}</span> · Confidence: <span className="text-slate-400">{fraudDetection.confidence || 0}%</span> · Flags: <span className={fraudFlags.length > 0 ? "text-red-400" : "text-emerald-400"}>{fraudFlags.length}</span></p>
+        <p className="mt-3 text-sm text-slate-500">Overall: <span className={fraudDetection.overall === "pass" ? "text-emerald-400" : "text-red-400"}>{fraudDetection.overall || "pass"}</span> · Confidence: <span className="text-slate-400">{Number(fraudDetection.confidence || 0).toFixed(1)}%</span> · Flags: <span className={fraudFlags.length > 0 ? "text-red-400" : "text-emerald-400"}>{fraudFlags.length}</span></p>
       </motion.section>
 
       {/* Underwriting Decision */}
@@ -273,7 +273,7 @@ export default function InvoiceDetailClient({ params }: { params: { id: string }
               <div className="mt-3 space-y-1 text-xs">
                 <p className="text-slate-400">Status: <span className="text-emerald-400 capitalize">{invoice.company_info.status}</span></p>
                 <p className="text-slate-400">Incorporated: <span className="text-slate-200">{invoice.company_info.incorporated}</span></p>
-                <p className="text-slate-400">Paid-up Capital: <span className="text-slate-200">₹{Number(invoice.company_info.paid_up_capital || 0).toLocaleString("en-IN")}</span></p>
+                <p className="text-slate-400">Paid-up Capital: <span className="text-slate-200">₹{Math.round(Number(invoice.company_info.paid_up_capital || 0)).toLocaleString("en-IN")}</span></p>
               </div>
             </div>
           )}
